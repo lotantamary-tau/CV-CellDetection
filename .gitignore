@@ -1,0 +1,47 @@
+# Conda / virtual environments
+.venv/
+env/
+venv/
+
+# Caiman example data (installed separately; not project code)
+caiman_data/
+
+# Local data (large TIF videos and ROIs — not redistributed)
+Lab/data/
+
+# Data file types — never commit, regardless of location
+*.tif
+*.tiff
+*.rar
+
+# CNMF runtime outputs (produced by cnmf_runner.py / interactive_cnmf_viewer.py)
+cnmf_debug_outputs/
+cnmf_results/
+
+# Reference papers (not redistributed for copyright reasons)
+reserch/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
