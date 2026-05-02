@@ -1,5 +1,5 @@
 ================================================================================
-  SOFI HELPERS — MISSION SUMMARY & CRASH RECOVERY GUIDE
+  CNMF_TOOLKIT — USAGE GUIDE & CRASH RECOVERY
 ================================================================================
   Last updated: 2026-02-28
 ================================================================================
@@ -25,7 +25,7 @@ STEP-BY-STEP (copy-paste these commands)
   │ STEP 0 — Always activate conda first                           │
   │                                                                  │
   │   conda activate caiman                                          │
-  │   cd /Users/sheerg/CaImAn/caiman/source_extraction/cnmf/sofi_helpers │
+  │   cd cnmf_toolkit                                                │
   └──────────────────────────────────────────────────────────────────┘
 
   ┌──────────────────────────────────────────────────────────────────┐
@@ -43,7 +43,7 @@ STEP-BY-STEP (copy-paste these commands)
   ┌──────────────────────────────────────────────────────────────────┐
   │ STEP 2 — View results in napari                                  │
   │                                                                  │
-  │   python interactive_cnmf_viewer.py                              │
+  │   python cnmf_viewer.py                              │
   │                                                                  │
   │   Controls:                                                      │
   │     1-8        Switch stages (init → spatial → temporal → etc.)  │
@@ -98,7 +98,7 @@ can use 5-10x that during processing. Recovery steps:
 
   6. If debug stages exist but no final HDF5, you can still view
      the partial results:
-       python interactive_cnmf_viewer.py
+       python cnmf_viewer.py
 
 
 AVAILABLE CONFIGS
@@ -137,7 +137,7 @@ corrections) and view it in the napari viewer, follow these steps:
        my_stage_0_A.npz       Sparse A matrix (if A was sparse)
        metadata_my_stage_0.txt
 
-  3. Add a key binding in viewer/debug_viewer.py (_bind_keys method):
+  3. Add a key binding in viewer/stage_viewer.py (_bind_keys method):
 
        stage_keys = {
            ...
@@ -146,7 +146,7 @@ corrections) and view it in the napari viewer, follow these steps:
 
   4. Launch the viewer and press 9 to switch to your stage:
 
-       python interactive_cnmf_viewer.py
+       python cnmf_viewer.py
 
   Note: The viewer expects stage files to follow the naming convention
   {stage_name}_0.npz for dense arrays and {stage_name}_0_{key}.npz for
@@ -171,16 +171,17 @@ AVAILABLE CONFIGS
 
 FILES IN THIS DIRECTORY
 -----------------------
-  MISSION_SUMMARY.txt          This file
+  USAGE.md                     This file
   GDRIVE_SETUP.md              Google Drive upload instructions
   cnmf_runner.py               CLI entry point (Step 1)
   cnmf_manager.py              CNMFManager class with all configs
   debug_tracker.py             CNMFDebugTracker (saves per-stage data)
   gdrive_uploader.py           Optional Google Drive upload
-  interactive_cnmf_viewer.py   Napari viewer entry point (Step 2)
+  cnmf_viewer.py               Napari viewer entry point (Step 2)
+  instrumented_cnmf.py         CNMF class with per-stage debug hooks
   viewer/                      Viewer sub-package
-    debug_viewer.py            Stage-switching napari viewer
-    hdf5_viewer.py             Fallback HDF5 viewer
+    stage_viewer.py            Stage-switching napari viewer
+    results_viewer.py          Fallback HDF5 viewer
     stage_store.py             Lazy-loads debug stage files
     image_utils.py             ROI labels, reference images
     plotting.py                Matplotlib component analysis plots

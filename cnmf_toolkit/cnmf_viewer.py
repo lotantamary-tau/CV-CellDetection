@@ -14,7 +14,7 @@ Controls:
     Click ROI  Detailed component analysis
 
 Usage:
-    python interactive_cnmf_viewer1.py
+    python cnmf_viewer.py
 """
 
 import os

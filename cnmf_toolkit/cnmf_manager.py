@@ -445,7 +445,7 @@ class CNMFManager:
         print(f"Running CNMF with configuration: {config_name}")
         print(f"{'='*60}")
 
-        # Deferred imports to avoid circular import with cnmf.py
+        # Deferred imports — see top-of-file note explaining why.
         import caiman as cm
         from instrumented_cnmf import CNMF
         from caiman.source_extraction.cnmf import params as cnmf_params

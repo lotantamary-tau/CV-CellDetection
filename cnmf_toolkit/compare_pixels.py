@@ -40,7 +40,7 @@ from pathlib import Path
 # ------------------------------------------------------------------
 def find_movie_path() -> str | None:
     """Auto-detect movie path from the most recent cnmf_results config,
-    or fall back to the newest TIFF file under sofi_helpers."""
+    or fall back to the newest TIFF file under cnmf_toolkit."""
 
     # 1) Try config files saved by cnmf_manager
     for base in [
@@ -70,7 +70,7 @@ def find_movie_path() -> str | None:
             except Exception:
                 continue
 
-    # 2) Fall back: find the most recent TIFF under the sofi_helpers tree
+    # 2) Fall back: find the most recent TIFF under the cnmf_toolkit tree
     tiffs = sorted(
         Path(_THIS_DIR).rglob("*_VIDEO.tif"),
         key=lambda p: p.stat().st_mtime,
