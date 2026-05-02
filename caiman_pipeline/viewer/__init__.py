@@ -3,11 +3,11 @@ viewer — Interactive CNMF Debug Stage Viewer package.
 
 Modules
 -------
-stage_store   : Lazy-loading stage catalogue (StageStore).
-image_utils   : ROI label creation, reference images, matrix helpers.
-plotting      : Matplotlib component analysis (ComponentPlotter).
-debug_viewer  : Napari viewer with stage switching (CNMFDebugStageViewer).
-hdf5_viewer   : Fallback HDF5-based viewer (HDF5Viewer).
+stage_store    : Lazy-loading stage catalogue (StageStore).
+image_utils    : ROI label creation, reference images, matrix helpers.
+plotting       : Matplotlib component analysis (ComponentPlotter).
+stage_viewer   : Napari viewer with stage switching (CNMFDebugStageViewer).
+results_viewer : Fallback HDF5-based viewer (HDF5Viewer).
 """
 
 import logging
@@ -46,8 +46,8 @@ DEFAULT_DEBUG_DIR = os.path.join(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
-from .debug_viewer import CNMFDebugStageViewer   # noqa: E402
-from .hdf5_viewer import HDF5Viewer              # noqa: E402
+from .stage_viewer import CNMFDebugStageViewer   # noqa: E402
+from .results_viewer import HDF5Viewer            # noqa: E402
 from .stage_store import StageStore               # noqa: E402
 
 __all__ = [
