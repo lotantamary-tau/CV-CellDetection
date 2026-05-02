@@ -12,15 +12,16 @@ docs/superpowers/
 # Caiman example data (installed separately; not project code)
 caiman_data/
 
-# Local data (large TIF videos and ROIs — not redistributed)
-data/
+# Local data folder — track the folder structure, ignore actual data files
+data/*
+!data/README.md
 
 # Data file types — never commit, regardless of location
 *.tif
 *.tiff
 *.rar
 
-# CNMF runtime outputs (produced by cnmf_runner.py / interactive_cnmf_viewer.py)
+# CNMF runtime outputs (produced by cnmf_runner.py / cnmf_viewer.py)
 cnmf_debug_outputs/
 cnmf_results/
 
