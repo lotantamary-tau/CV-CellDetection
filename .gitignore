@@ -3,6 +3,12 @@
 env/
 venv/
 
+# Git worktrees (local working copies of feature branches; never committed)
+.worktrees/
+
+# Superpowers planning docs (local-only; not part of project history)
+docs/superpowers/
+
 # Caiman example data (installed separately; not project code)
 caiman_data/
 
