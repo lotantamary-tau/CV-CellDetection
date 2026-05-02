@@ -23,6 +23,18 @@ CV-CellDetection/
 
 This project uses a conda environment.
 
+### Prerequisite: conda installed and initialized for your shell
+
+If you've never used conda, install [Miniconda](https://docs.anaconda.com/miniconda/) and then initialize it for your shell **once** (so `conda activate` is available):
+
+```bash
+conda init bash         # Linux/macOS bash
+conda init zsh          # macOS zsh
+conda init powershell   # Windows PowerShell
+```
+
+Restart your shell after running `conda init`. If you already use conda in other projects, this is already done — skip to the next step.
+
 ### 1. Create the environment
 
 ```bash
