@@ -75,10 +75,12 @@ This is usually caused by running out of RAM. The movie is ~0.7 GB but CNMF
 can use 5-10x that during processing. Recovery steps:
 
   1. Force restart / kill Python if frozen:
-       killall -9 python
+       killall -9 python                       # macOS / Linux
+       taskkill /F /IM python.exe              # Windows (cmd / PowerShell)
 
   2. Clean up leftover memory-mapped files:
-       rm -f /tmp/caiman_memmap_*
+       rm -f /tmp/caiman_memmap_*              # macOS / Linux
+       Remove-Item $env:TEMP\caiman_memmap_*   # Windows (PowerShell)
 
   3. To reduce memory usage, re-run with fewer frames:
        python -c "
@@ -100,9 +102,6 @@ can use 5-10x that during processing. Recovery steps:
      the partial results:
        python cnmf_viewer.py
 
-
-AVAILABLE CONFIGS
------------------
 
 ADDING A CUSTOM DEBUG STAGE
 ----------------------------
@@ -179,6 +178,7 @@ FILES IN THIS DIRECTORY
   gdrive_uploader.py           Optional Google Drive upload
   cnmf_viewer.py               Napari viewer entry point (Step 2)
   instrumented_cnmf.py         CNMF class with per-stage debug hooks
+  compare_pixels.py            Diagnostic CLI: compare 2 pixel signals
   viewer/                      Viewer sub-package
     stage_viewer.py            Stage-switching napari viewer
     results_viewer.py          Fallback HDF5 viewer

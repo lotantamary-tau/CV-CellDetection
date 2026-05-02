@@ -32,7 +32,7 @@ State lives in three places, in order of mutability:
 2. **Per-stage on-disk snapshots** — written by [debug_tracker.py:15](../../cnmf_toolkit/debug_tracker.py#L15) `CNMFDebugTracker.save_stage(...)`. The viewer never modifies these; it reads-only.
 3. **Final HDF5 + config JSON** — `cnmf_results/cnmf_results_<config>_<timestamp>.hdf5` plus `config_<config>_<timestamp>.json` produced after the full run. This is the persistent record.
 
-Provenance is tracked separately in `self.provenance` (see e.g. [cnmf_toolkit/instrumented_cnmf.py:587](../../cnmf_toolkit/instrumented_cnmf.py#L587)) — a list of `{event, time, description, …}` dicts appended whenever components are removed, merged, or otherwise transformed.
+Provenance is tracked separately in `self.provenance` (see e.g. [cnmf_toolkit/instrumented_cnmf.py:588](../../cnmf_toolkit/instrumented_cnmf.py#L588)) — a list of `{event, time, description, …}` dicts appended whenever components are removed, merged, or otherwise transformed.
 
 ## Recurring Logic Patterns
 
