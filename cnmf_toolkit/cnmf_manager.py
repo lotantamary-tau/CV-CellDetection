@@ -25,11 +25,10 @@ from pathlib import Path
 import numpy as np
 import tifffile
 
-# Ensure the LOCAL CaImAn repo is used, not any conda-installed version.
+# Ensure sibling modules are importable when this file is run as a script.
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-_REPO_ROOT = os.path.normpath(os.path.join(_THIS_DIR, '..', '..', '..', '..'))
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
+if _THIS_DIR not in sys.path:
+    sys.path.insert(0, _THIS_DIR)
 
 # NOTE: the CNMF class import is deferred to run_cnmf() to keep
 # importing cnmf_manager cheap (the instrumented_cnmf module imports

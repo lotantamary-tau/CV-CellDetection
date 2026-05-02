@@ -24,8 +24,6 @@ import os
 import sys
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-_REPO_ROOT = os.path.normpath(os.path.join(_THIS_DIR, '..', '..', '..', '..'))
-sys.path.insert(0, _REPO_ROOT)
 sys.path.insert(0, _THIS_DIR)
 
 import numpy as np
