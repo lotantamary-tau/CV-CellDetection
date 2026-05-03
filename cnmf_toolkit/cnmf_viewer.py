@@ -14,15 +14,16 @@ Controls:
     Click ROI  Detailed component analysis
 
 Usage:
-    python interactive_cnmf_viewer1.py
+    python cnmf_viewer.py
 """
 
 import os
 import signal
 import sys
 
-# macOS Qt compatibility
-os.environ['QT_MAC_WANTS_LAYER'] = '1'
+# macOS Qt compatibility (only relevant on macOS)
+if sys.platform == 'darwin':
+    os.environ['QT_MAC_WANTS_LAYER'] = '1'
 os.environ['QT_AUTO_SCREEN_SCALE_FACTOR'] = '1'
 
 import napari

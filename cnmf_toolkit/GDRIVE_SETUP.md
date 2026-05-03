@@ -52,7 +52,7 @@ export GDRIVE_CLIENT_SECRET="/path/to/client-secret.json"
 Once the environment variables are set, the debug tracker will **automatically** upload files:
 
 ```python
-from caiman.source_extraction.cnmf.sofi_helpers.debug_tracker import CNMFDebugTracker
+from cnmf_toolkit.debug_tracker import CNMFDebugTracker
 
 # Files are saved locally AND uploaded to Google Drive
 tracker = CNMFDebugTracker(enabled=True)

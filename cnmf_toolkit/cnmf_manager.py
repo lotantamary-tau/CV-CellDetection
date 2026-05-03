@@ -25,14 +25,14 @@ from pathlib import Path
 import numpy as np
 import tifffile
 
-# Ensure the LOCAL CaImAn repo is used, not any conda-installed version.
+# Ensure sibling modules are importable when this file is run as a script.
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-_REPO_ROOT = os.path.normpath(os.path.join(_THIS_DIR, '..', '..', '..', '..'))
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
+if _THIS_DIR not in sys.path:
+    sys.path.insert(0, _THIS_DIR)
 
-# NOTE: caiman imports are deferred to run_cnmf() to avoid a circular
-# import chain:  cnmf.py -> sofi_helpers -> cnmf_manager -> cnmf.py
+# NOTE: the CNMF class import is deferred to run_cnmf() to keep
+# importing cnmf_manager cheap (the instrumented_cnmf module imports
+# many caiman submodules transitively).
 
 
 class CNMFManager:
@@ -445,9 +445,9 @@ class CNMFManager:
         print(f"Running CNMF with configuration: {config_name}")
         print(f"{'='*60}")
 
-        # Deferred imports to avoid circular import with cnmf.py
+        # Deferred imports — see top-of-file note explaining why.
         import caiman as cm
-        from caiman.source_extraction.cnmf import CNMF
+        from instrumented_cnmf import CNMF
         from caiman.source_extraction.cnmf import params as cnmf_params
         
         # Get configuration

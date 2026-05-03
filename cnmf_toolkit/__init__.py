@@ -1,12 +1,13 @@
 """
-sofi_helpers — CNMF debugging, configuration, and visualization toolkit.
+cnmf_toolkit — Instrumented CNMF, debug capture, and napari viewer for our lab's
+electrocyte detection workflow.
 
 Modules
 -------
 debug_tracker   : CNMFDebugTracker — saves matrices/images at each CNMF stage.
 cnmf_manager    : CNMFManager — run CNMF with named parameter configurations.
 gdrive_uploader : GDriveUploader — upload debug outputs to Google Drive.
-interactive_cnmf_viewer : Launch an interactive napari-based stage viewer.
+cnmf_viewer     : Launch an interactive napari-based stage viewer.
 
 Sub-packages
 ------------

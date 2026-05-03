@@ -366,5 +366,6 @@ dependencies:
   - zlib-ng=2.3.3
   - zstd=1.5.7
   - pip:
+      - napari>=0.5
       - scikit-image==0.26.0
       - scipy==1.17.1

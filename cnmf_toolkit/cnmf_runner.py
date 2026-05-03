@@ -15,12 +15,10 @@ import argparse
 import os
 import sys
 
-# Ensure the LOCAL CaImAn repo is used, not any conda-installed version.
-# This file lives at <repo>/caiman/source_extraction/cnmf/sofi_helpers/cnmf_runner.py
+# Ensure sibling modules (cnmf_manager, instrumented_cnmf, ...) are importable
+# when this file is run as a script.
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-_REPO_ROOT = os.path.normpath(os.path.join(_THIS_DIR, '..', '..', '..', '..'))
-sys.path.insert(0, _REPO_ROOT)   # so `import caiman` resolves to the local tree
-sys.path.insert(0, _THIS_DIR)    # so `import cnmf_manager` works
+sys.path.insert(0, _THIS_DIR)
 
 from cnmf_manager import CNMFManager
 
