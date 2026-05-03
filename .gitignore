@@ -22,7 +22,8 @@ data/*
 *.rar
 
 # CNMF runtime outputs (produced by cnmf_runner.py / cnmf_viewer.py)
-cnmf_debug_outputs/
+# Glob catches renamed/archived runs too, e.g. cnmf_debug_outputs_oldenv/
+cnmf_debug_outputs*
 cnmf_results/
 
 # Reference papers (not redistributed for copyright reasons)
