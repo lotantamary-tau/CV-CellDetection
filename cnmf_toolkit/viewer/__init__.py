@@ -40,7 +40,7 @@ MATRIX_NAMES = ('A', 'C', 'S', 'YrA', 'b', 'f')
 
 DEFAULT_DEBUG_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
-    '..', 'cnmf_debug_outputs',
+    '..', '..', 'data', 'results', 'debug_outputs',
 )
 
 # ---------------------------------------------------------------------------

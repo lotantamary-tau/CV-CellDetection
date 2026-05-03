@@ -27,7 +27,7 @@ class HDF5Viewer:
     # Loading
     # ------------------------------------------------------------------
     @staticmethod
-    def load_results(results_dir: str = "./cnmf_results"):
+    def load_results(results_dir: str = None):
         """Load the most recent CNMF HDF5 results file.
 
         Returns
@@ -35,6 +35,11 @@ class HDF5Viewer:
         tuple or None
             ``(A, C, b, f_bg, dims)`` if found, else *None*.
         """
+        if results_dir is None:
+            # Default: <repo>/data/results/hdf5/
+            results_dir = str(
+                Path(__file__).resolve().parents[2] / "data" / "results" / "hdf5"
+            )
         results_path = Path(results_dir)
         hdf5_files = sorted(
             results_path.glob("cnmf_results_*.hdf5"),

@@ -44,6 +44,9 @@ def find_movie_path() -> str | None:
 
     # 1) Try config files saved by cnmf_manager
     for base in [
+        # New canonical location: <repo>/data/results/hdf5/
+        Path(_THIS_DIR).resolve().parent / 'data' / 'results' / 'hdf5',
+        # Legacy fallbacks
         Path(_THIS_DIR) / 'cnmf_results',
         Path('cnmf_results'),
     ]:
@@ -217,7 +220,7 @@ def main():
     parser.add_argument("y2", type=int, help="Y coordinate of second pixel")
     parser.add_argument(
         "--movie", type=str, default=None,
-        help="Path to TIFF movie (auto-detected from cnmf_results if omitted)",
+        help="Path to TIFF movie (auto-detected from data/results/hdf5/ if omitted)",
     )
     args = parser.parse_args()
 

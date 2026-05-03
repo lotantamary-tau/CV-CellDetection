@@ -13,7 +13,7 @@ The repo has two parts:
 CV-CellDetection/
 ├── cnmf_toolkit/            # Forked CNMF + per-stage debug + napari viewer
 ├── notebooks/               # Lab's electrocyte-detection analyses
-├── data/                    # *gitignored* — local TIF videos and ROI tags
+├── data/                    # *mostly gitignored* — structure ships pre-built (RawData/, TaggedData/, results/), drop your TIFs in
 ├── environment.yml          # Conda environment spec
 ├── CLAUDE.md                # Project context for Claude Code
 └── .claude/docs/            # Deeper architectural notes
@@ -56,7 +56,7 @@ This populates a local `caiman_data/` folder (not committed to this repo).
 
 ### 3. Add your own data
 
-Drop TIF videos into `data/RawData/` and tagged ROIs into `data/TaggedData/`. The repository ignores `data/` so your recordings stay local.
+Drop TIF videos into `data/RawData/` and tagged ROIs into `data/TaggedData/`. The folder structure (including `results/` for CNMF outputs) is already there — you don't need to create anything. Actual data files are gitignored, so your recordings stay local.
 
 ## Running cnmf_toolkit
 

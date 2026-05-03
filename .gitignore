@@ -6,28 +6,42 @@ venv/
 # Git worktrees (local working copies of feature branches; never committed)
 .worktrees/
 
-# Superpowers planning docs (local-only; not part of project history)
-docs/superpowers/
+# Local-only docs (planning artifacts, etc. — never tracked, not part of project history)
+docs/
 
 # Caiman example data (installed separately; not project code)
 caiman_data/
 
-# Local data folder — track the folder structure, ignore actual data files
+# Local data folder — track the folder structure (subfolders kept alive via
+# .gitkeep markers so a fresh clone gets the full layout), ignore actual data
+# files. *.tif/*.tiff/*.rar rules below also apply within data/.
 data/*
 !data/README.md
+!data/RawData/
+!data/TaggedData/
+!data/results/
+data/RawData/*
+!data/RawData/.gitkeep
+data/TaggedData/*
+!data/TaggedData/.gitkeep
+data/results/*
+!data/results/debug_outputs/
+!data/results/hdf5/
+data/results/debug_outputs/*
+!data/results/debug_outputs/.gitkeep
+data/results/hdf5/*
+!data/results/hdf5/.gitkeep
 
 # Data file types — never commit, regardless of location
 *.tif
 *.tiff
 *.rar
 
-# CNMF runtime outputs (produced by cnmf_runner.py / cnmf_viewer.py)
-# Glob catches renamed/archived runs too, e.g. cnmf_debug_outputs_oldenv/
-cnmf_debug_outputs*
-cnmf_results/
+# CNMF runtime outputs now live under data/results/ and are covered
+# by the data/* rule above. No separate ignore rules needed.
 
 # Reference papers (not redistributed for copyright reasons)
-reserch/
+research/
 
 # Python
 __pycache__/
