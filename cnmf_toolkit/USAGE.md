@@ -1,7 +1,7 @@
 ================================================================================
   CNMF_TOOLKIT — USAGE GUIDE & CRASH RECOVERY
 ================================================================================
-  Last updated: 2026-02-28
+  Last updated: 2026-05-03
 ================================================================================
 
 PURPOSE
@@ -10,12 +10,16 @@ Run CNMF calcium imaging analysis on TIFF movies, save debug data at every
 pipeline stage, and inspect results interactively in napari.
 
 
-CURRENT DATA
-------------
-Movie: 20250409_5_Glut_100uM/20250409_5_Glut_100uM/20250409_5_Glut_100uM_TIFF_VIDEO.tif
-  - 1380 frames, 512x512, uint16, ~690 MB on disk
-  - Frame rate: 1.08 Hz
-  - Spatial resolution: 1.243 µm/px
+DATA LAYOUT
+-----------
+Drop your TIFF movies into the repo's gitignored `data/` folder (one level up
+from `cnmf_toolkit/`). See `data/README.md` for the expected structure. The
+examples below assume a movie at `../data/your_movie.tif`.
+
+The lab's reference movies have been ~1380 frames, 512x512, uint16, ~690 MB,
+recorded at fr=1.08 Hz with 1.243 µm/px spatial resolution. CNMF parameters
+in the named configs (e.g. `greedy_roi_no_patches_config`) are tuned for
+that regime.
 
 
 STEP-BY-STEP (copy-paste these commands)
@@ -24,15 +28,14 @@ STEP-BY-STEP (copy-paste these commands)
   ┌──────────────────────────────────────────────────────────────────┐
   │ STEP 0 — Always activate conda first                           │
   │                                                                  │
-  │   conda activate caiman                                          │
+  │   conda activate cv-celldetection                                │
   │   cd cnmf_toolkit                                                │
   └──────────────────────────────────────────────────────────────────┘
 
   ┌──────────────────────────────────────────────────────────────────┐
   │ STEP 1 — Run CNMF analysis                                      │
   │                                                                  │
-  │   python cnmf_runner.py \                                        │
-  │     "20250409_5_Glut_100uM/20250409_5_Glut_100uM/20250409_5_Glut_100uM_TIFF_VIDEO.tif" │
+  │   python cnmf_runner.py "../data/your_movie.tif"                 │
   │                                                                  │
   │   Options:                                                       │
   │     --config greedy_roi_no_patches_config   (default)            │
@@ -87,7 +90,7 @@ can use 5-10x that during processing. Recovery steps:
        from cnmf_manager import CNMFManager
        m = CNMFManager()
        m.run_cnmf('greedy_roi_no_patches_config',
-                   movie_file='20250409_5_Glut_100uM/20250409_5_Glut_100uM/20250409_5_Glut_100uM_TIFF_VIDEO.tif',
+                   movie_file='../data/your_movie.tif',
                    enable_debug=True, max_frames=500)
        "
 
