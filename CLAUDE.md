@@ -26,7 +26,7 @@ CV-CellDetection is a lab-internal toolkit for adapting [CaImAn](https://github.
 | [cnmf_toolkit/gdrive_uploader.py](cnmf_toolkit/gdrive_uploader.py) | Optional Google Drive upload of debug outputs. |
 | [cnmf_toolkit/compare_pixels.py](cnmf_toolkit/compare_pixels.py) | Diagnostic CLI: compare raw fluorescence signals at two pixel locations side-by-side. |
 | [notebooks/](notebooks/) | The notebooks the lab actually uses for electrocyte detection (production analysis lives here, not in the toolkit). |
-| `data/` | **Gitignored.** Local TIF videos (`RawData/`) and tagged ROIs (`TaggedData/`). |
+| [`data/`](data/) | Folder structure (`RawData/`, `TaggedData/`, `results/debug_outputs/`, `results/hdf5/`) ships with the repo via `.gitkeep` markers — friends cloning don't need to create any folder. All actual content (TIFs, NPZs, HDF5s) is gitignored. See [data/README.md](data/README.md) for full layout. |
 | `caiman_data/` | **Gitignored.** Installed via `caimanmanager install`; not project code. |
 | `research/` | **Gitignored.** Reference papers (kept locally, not redistributed). |
 
@@ -42,7 +42,8 @@ conda activate cv-celldetection
 # Install CaImAn sample data (one time, optional)
 caimanmanager install
 
-# Run CNMF on a movie (writes per-stage debug data to cnmf_debug_outputs/)
+# Run CNMF on a movie (writes per-stage debug data to data/results/debug_outputs/
+# and final HDF5 to data/results/hdf5/)
 cd cnmf_toolkit
 python cnmf_runner.py path/to/movie.tif --config greedy_roi_no_patches_config
 
