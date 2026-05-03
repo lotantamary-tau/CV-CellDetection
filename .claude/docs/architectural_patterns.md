@@ -30,7 +30,7 @@ State lives in three places, in order of mutability:
 
 1. **In-memory CNMF object state** — `self.estimates.{Ab, C, S, b, f, YrA, AtA, …}` mutated in place by each stage of [instrumented_cnmf.py](../../cnmf_toolkit/instrumented_cnmf.py). This is upstream behavior, not local design.
 2. **Per-stage on-disk snapshots** — written by [debug_tracker.py:15](../../cnmf_toolkit/debug_tracker.py#L15) `CNMFDebugTracker.save_stage(...)`. The viewer never modifies these; it reads-only.
-3. **Final HDF5 + config JSON** — `cnmf_results/cnmf_results_<config>_<timestamp>.hdf5` plus `config_<config>_<timestamp>.json` produced after the full run. This is the persistent record.
+3. **Final HDF5 + config JSON** — `data/results/hdf5/cnmf_results_<config>_<timestamp>.hdf5` plus `config_<config>_<timestamp>.json` produced after the full run. This is the persistent record.
 
 Provenance is tracked separately in `self.provenance` (see e.g. [cnmf_toolkit/instrumented_cnmf.py:588](../../cnmf_toolkit/instrumented_cnmf.py#L588)) — a list of `{event, time, description, …}` dicts appended whenever components are removed, merged, or otherwise transformed.
 
