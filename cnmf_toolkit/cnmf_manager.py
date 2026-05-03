@@ -42,8 +42,10 @@ class CNMFManager:
     
     def __init__(self):
         self.configs = self._load_default_configs()
-        self.results_dir = Path("./cnmf_results")
-        self.results_dir.mkdir(exist_ok=True)
+        # Default: <repo>/data/results/hdf5/, computed relative to this file
+        # so it works regardless of CWD. parents[1] climbs cnmf_toolkit/ → repo.
+        self.results_dir = Path(__file__).resolve().parents[1] / "data" / "results" / "hdf5"
+        self.results_dir.mkdir(parents=True, exist_ok=True)
         
     def _load_default_configs(self):
         """Load default parameter configurations"""
