@@ -17,7 +17,8 @@ class CNMFDebugTracker:
 
     Args:
         save_dir: Directory to write outputs into. Defaults to env var
-            ``CNMF_DEBUG_DIR`` or ``./cnmf_debug_outputs``.
+            ``CNMF_DEBUG_DIR`` or ``<repo>/data/results/debug_outputs/``
+            (computed relative to this file so the path works from any CWD).
         enabled: If False, all ``save_stage`` calls become no-ops so there
             is zero overhead when you don't need debugging.
         gdrive_folder_id: Google Drive folder ID to upload files to.
@@ -35,7 +36,14 @@ class CNMFDebugTracker:
                  gdrive_folder_id=None, gdrive_service_account_key=None,
                  gdrive_client_secret=None, gdrive_delete_local=False):
         if save_dir is None:
-            save_dir = os.environ.get("CNMF_DEBUG_DIR", "cnmf_debug_outputs")
+            # Default: <repo>/data/results/debug_outputs/, computed relative to
+            # this file so it works regardless of CWD. CNMF_DEBUG_DIR env var
+            # overrides for users who want a custom location.
+            _default = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "..", "data", "results", "debug_outputs",
+            )
+            save_dir = os.environ.get("CNMF_DEBUG_DIR", _default)
         self.save_dir = save_dir
         self.enabled = enabled
         self.stage_counter = {}
