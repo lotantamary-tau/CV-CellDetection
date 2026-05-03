@@ -6,8 +6,8 @@ venv/
 # Git worktrees (local working copies of feature branches; never committed)
 .worktrees/
 
-# Superpowers planning docs (local-only; not part of project history)
-docs/superpowers/
+# Local-only docs (planning artifacts, etc. — never tracked, not part of project history)
+docs/
 
 # Caiman example data (installed separately; not project code)
 caiman_data/
@@ -21,13 +21,11 @@ data/*
 *.tiff
 *.rar
 
-# CNMF runtime outputs (produced by cnmf_runner.py / cnmf_viewer.py)
-# Glob catches renamed/archived runs too, e.g. cnmf_debug_outputs_oldenv/
-cnmf_debug_outputs*
-cnmf_results/
+# CNMF runtime outputs now live under data/results/ and are covered
+# by the data/* rule above. No separate ignore rules needed.
 
 # Reference papers (not redistributed for copyright reasons)
-reserch/
+research/
 
 # Python
 __pycache__/
