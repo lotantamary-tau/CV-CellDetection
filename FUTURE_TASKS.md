@@ -58,25 +58,55 @@ Lightweight, low-priority improvements we've noticed but haven't acted on. Pick 
 
 ---
 
-## 4. Wire the lab notebook into the debug tracker / viewer
+## 4. Wire the lab notebook into the debug tracker / viewer (with a debug-mode toggle)
 
 **Problem.** The debug tracker + napari viewer only fire when CNMF is run via `cnmf_runner.py` / `CNMFManager` (which use `instrumented_cnmf.CNMF`). The lab notebook (`notebooks/OPCal_cell detection_caiman_150226.ipynb`) imports `CNMF` directly from upstream `caiman.source_extraction.cnmf` and applies its own lab-refined logic (custom parameter tweaks, post-processing, refit, evaluation). Result: the viewer has nothing to show for the *actual* analysis the lab runs in production — only the runner's path. We can inspect the toolkit's CaImAn-style pipeline but not the notebook's lab pipeline.
 
-**What we want.** When the lab runs the notebook end-to-end, every stage (init → spatial → temporal → merge → final, plus refit) should write debug snapshots, and `cnmf_viewer.py` should be able to load those exactly the way it loads runner output today.
+**What we want.** A switchable connection. When the lab is doing normal analysis, the notebook behaves exactly as it does today — zero debug overhead, no extra files. When someone wants to *inspect* a stage in napari, they flip a single flag at the top of the notebook, Run-All, then launch `cnmf_viewer.py` — the viewer finds the stages exactly the way it loads runner output today.
 
-**Possible approaches.**
+**Two implementation options to consider — pick before executing.** Both produce the same user-visible behavior (a `DEBUG_MODE` flag at the top of the notebook); they differ in *how* the toggle is wired underneath.
 
-- **A. Swap the CNMF import in the notebook.** Replace `from caiman.source_extraction.cnmf.cnmf import CNMF` with `from instrumented_cnmf import CNMF` (after adding `sys.path.insert(0, '../cnmf_toolkit')`). The notebook keeps all its lab-refined logic; debug hooks fire automatically because the instrumented class IS the CNMF the notebook instantiates. Lowest-touch.
-- **B. Use `CNMFManager` from the notebook.** Refactor the notebook to call `CNMFManager.run_cnmf(...)` for the heavy lifting and then layer the lab's post-processing on top. Cleaner separation, but the notebook's parameter tuning has to flow through the manager's named-config system — moderate refactor.
-- **C. Manually instantiate `CNMFDebugTracker` in the notebook.** Have the notebook create a tracker and call `tracker.save_stage(...)` at chosen checkpoints. Most flexible but loses the "automatic hooks" property — the notebook author has to know where to call `save_stage`.
+### Option A — branch on the import (simpler)
 
-**Recommendation.** Start with **A** (swap the import). It's a 2-line change and gives the lab the viewer for free. Re-evaluate B if the notebook outgrows its current shape.
+```python
+DEBUG_MODE = False   # set True to enable per-stage debug snapshots for the viewer
 
-**Where to change.**
-- `notebooks/OPCal_cell detection_caiman_150226.ipynb` — the cell that imports `CNMF`. Add `sys.path.insert(0, '../cnmf_toolkit')` and change the import.
-- `data/README.md` and `cnmf_toolkit/USAGE.md` — once the notebook also writes debug outputs, mention that the viewer works on notebook runs too.
+if DEBUG_MODE:
+    import sys; sys.path.insert(0, '../cnmf_toolkit')
+    from instrumented_cnmf import CNMF
+else:
+    from caiman.source_extraction.cnmf.cnmf import CNMF
+```
 
-**Verification.** After the change, Run-All on the notebook, then `cd cnmf_toolkit && python cnmf_viewer.py`. The viewer should find stages from the notebook run in `data/results/debug_outputs/`. (If both runner and notebook are run, see future task #2 — multi-run isolation — to keep them separate.)
+- **How it works.** Two completely separate CNMF classes get loaded depending on the flag. In `DEBUG_MODE = False` the notebook never even imports the instrumentation — zero overhead, zero risk of accidentally writing to `data/results/`. In `DEBUG_MODE = True` it imports the instrumented class and the hooks fire automatically.
+- **Pros.** Trivially simple — flip one line, Run-All. Non-debug mode is byte-identical to the original notebook (no chance of behavior drift). Easy for friends to understand at a glance.
+- **Cons.** Two import paths means two code paths, which is harder to reason about if someone later changes the upstream caiman version vs. the instrumented version. Not really a problem in practice since `instrumented_cnmf.py` is a near-verbatim copy of upstream.
+
+### Option B — always import the instrumented class, toggle the tracker (cleaner architecture)
+
+```python
+import sys; sys.path.insert(0, '../cnmf_toolkit')
+from instrumented_cnmf import CNMF
+from debug_tracker import CNMFDebugTracker
+
+DEBUG_MODE = False
+tracker = CNMFDebugTracker(enabled=DEBUG_MODE)   # no-op when disabled
+# ...later, when constructing the CNMF object, pass the tracker through.
+```
+
+- **How it works.** The notebook *always* uses the instrumented CNMF, but the tracker has an `enabled` flag (`debug_tracker.py:34`) that makes `save_stage` a no-op when False. So in non-debug mode the instrumentation is loaded but does nothing — same behavior, same outputs.
+- **Pros.** Single code path. There's only one `CNMF` class to reason about. Closer to the runner's behavior, so any future improvement to the instrumented class flows to both runner and notebook.
+- **Cons.** Slightly more machinery upfront — needs to plumb the tracker into the CNMF constructor (the runner does this automatically; the notebook would need to do it explicitly). Microscopically slower import time (loads `debug_tracker` and its matplotlib import).
+
+### Recommendation
+
+**Start with Option A** unless someone has a specific reason to prefer B. A is a 4-line change to the notebook with no tracker plumbing required, and labs are used to "flip flag, re-run." Switch to B later if the lab notebook starts wanting to capture *some* stages but not others (e.g., capture only the refit, not the initial fit) — at that point the tracker's `enabled` flag is more flexible than an import branch.
+
+**Where to change (Option A).**
+- `notebooks/OPCal_cell detection_caiman_150226.ipynb` — at the very top of the notebook, add the `DEBUG_MODE = False` cell with the conditional import. Update the cell that imports `CNMF` so it doesn't redundantly import again.
+- `data/README.md` and `cnmf_toolkit/USAGE.md` — mention the toggle: "set `DEBUG_MODE = True` in the notebook + Run-All to write debug outputs; then `python cnmf_viewer.py` to inspect."
+
+**Verification.** Run the notebook with `DEBUG_MODE = False`: nothing new in `data/results/`. Run with `DEBUG_MODE = True`: see fresh `.npz` files in `data/results/debug_outputs/` and a new HDF5 in `data/results/hdf5/`. Then `python cnmf_viewer.py` should load the notebook's stages. (If both runner and notebook end up writing to the same folder, see future task #2 — multi-run isolation — to keep them separated.)
 
 ---
 
