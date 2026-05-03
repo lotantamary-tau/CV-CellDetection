@@ -6,7 +6,7 @@ Lightweight, low-priority improvements we've noticed but haven't acted on. Pick 
 
 ## 1. `--no-png` flag for `cnmf_runner.py`
 
-**Problem.** A single run with ~234 components produces ~1,640 per-ROI PNGs in `cnmf_debug_outputs/` (one PNG per component per stage). Disk impact is small (~50–80 MB) but the file count is overwhelming, and the napari viewer doesn't actually read these PNGs — it reads the `.npz` matrices. The PNGs only exist for offline browsing.
+**Problem.** A single run with ~234 components produces ~1,640 per-ROI PNGs in `data/results/debug_outputs/` (one PNG per component per stage). Disk impact is small (~50–80 MB) but the file count is overwhelming, and the napari viewer doesn't actually read these PNGs — it reads the `.npz` matrices. The PNGs only exist for offline browsing.
 
 **Idea.** Add a `--no-png` (or `--png/--no-png`) flag on `cnmf_runner.py` that gets forwarded into `CNMFDebugTracker` and skips both `_save_masks_as_png` and `_plot_YrA_traces`. Saves a few seconds of runtime and ~1.6k files per run.
 
@@ -19,7 +19,7 @@ Lightweight, low-priority improvements we've noticed but haven't acted on. Pick 
 
 ---
 
-## 2. Multi-run isolation in `cnmf_debug_outputs/`
+## 2. Multi-run isolation in `data/results/debug_outputs/`
 
 **Problem.** `CNMFDebugTracker.stage_counter` resets to 0 every time the tracker is instantiated (per-instance state, not persisted to disk). Combined with no pre-run cleanup, this means:
 
@@ -28,7 +28,7 @@ Lightweight, low-priority improvements we've noticed but haven't acted on. Pick 
 - The napari viewer then loads a mixed-run folder with no warning.
 
 **Possible fixes (pick one).**
-- **A. Per-run subfolder (cleanest).** Tracker creates a timestamped sub-directory `cnmf_debug_outputs/run_YYYYMMDD_HHMMSS/` on init. Each run is fully isolated. Viewer either accepts a `--run` argument or auto-picks the most recent.
+- **A. Per-run subfolder (cleanest).** Tracker creates a timestamped sub-directory `data/results/debug_outputs/run_YYYYMMDD_HHMMSS/` on init. Each run is fully isolated. Viewer either accepts a `--run` argument or auto-picks the most recent.
 - **B. Wipe-on-start (simpler).** Before the first `save_stage` call, the tracker clears its `save_dir`. One-line behavior change but destructive — easy to lose data accidentally.
 - **C. Continue-the-counter (smallest change).** On init, scan existing files matching `{stage}_*.npz`, set `stage_counter[stage]` to one past the highest seen. Files coexist (`init_0.npz` from run #1, `init_1.npz` from run #2), but the viewer needs to learn to filter by run.
 
