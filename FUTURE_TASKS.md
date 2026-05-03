@@ -58,6 +58,28 @@ Lightweight, low-priority improvements we've noticed but haven't acted on. Pick 
 
 ---
 
+## 4. Wire the lab notebook into the debug tracker / viewer
+
+**Problem.** The debug tracker + napari viewer only fire when CNMF is run via `cnmf_runner.py` / `CNMFManager` (which use `instrumented_cnmf.CNMF`). The lab notebook (`notebooks/OPCal_cell detection_caiman_150226.ipynb`) imports `CNMF` directly from upstream `caiman.source_extraction.cnmf` and applies its own lab-refined logic (custom parameter tweaks, post-processing, refit, evaluation). Result: the viewer has nothing to show for the *actual* analysis the lab runs in production — only the runner's path. We can inspect the toolkit's CaImAn-style pipeline but not the notebook's lab pipeline.
+
+**What we want.** When the lab runs the notebook end-to-end, every stage (init → spatial → temporal → merge → final, plus refit) should write debug snapshots, and `cnmf_viewer.py` should be able to load those exactly the way it loads runner output today.
+
+**Possible approaches.**
+
+- **A. Swap the CNMF import in the notebook.** Replace `from caiman.source_extraction.cnmf.cnmf import CNMF` with `from instrumented_cnmf import CNMF` (after adding `sys.path.insert(0, '../cnmf_toolkit')`). The notebook keeps all its lab-refined logic; debug hooks fire automatically because the instrumented class IS the CNMF the notebook instantiates. Lowest-touch.
+- **B. Use `CNMFManager` from the notebook.** Refactor the notebook to call `CNMFManager.run_cnmf(...)` for the heavy lifting and then layer the lab's post-processing on top. Cleaner separation, but the notebook's parameter tuning has to flow through the manager's named-config system — moderate refactor.
+- **C. Manually instantiate `CNMFDebugTracker` in the notebook.** Have the notebook create a tracker and call `tracker.save_stage(...)` at chosen checkpoints. Most flexible but loses the "automatic hooks" property — the notebook author has to know where to call `save_stage`.
+
+**Recommendation.** Start with **A** (swap the import). It's a 2-line change and gives the lab the viewer for free. Re-evaluate B if the notebook outgrows its current shape.
+
+**Where to change.**
+- `notebooks/OPCal_cell detection_caiman_150226.ipynb` — the cell that imports `CNMF`. Add `sys.path.insert(0, '../cnmf_toolkit')` and change the import.
+- `data/README.md` and `cnmf_toolkit/USAGE.md` — once the notebook also writes debug outputs, mention that the viewer works on notebook runs too.
+
+**Verification.** After the change, Run-All on the notebook, then `cd cnmf_toolkit && python cnmf_viewer.py`. The viewer should find stages from the notebook run in `data/results/debug_outputs/`. (If both runner and notebook are run, see future task #2 — multi-run isolation — to keep them separate.)
+
+---
+
 ## How we use this file
 
 - One section per idea. No deadlines, no owners — these are notes, not tickets.
