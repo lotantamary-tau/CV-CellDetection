@@ -28,7 +28,7 @@ CV-CellDetection is a lab-internal toolkit for adapting [CaImAn](https://github.
 | [notebooks/](notebooks/) | The notebooks the lab actually uses for electrocyte detection (production analysis lives here, not in the toolkit). |
 | `data/` | **Gitignored.** Local TIF videos (`RawData/`) and tagged ROIs (`TaggedData/`). |
 | `caiman_data/` | **Gitignored.** Installed via `caimanmanager install`; not project code. |
-| `reserch/` | **Gitignored.** Reference papers (kept locally, not redistributed). |
+| `research/` | **Gitignored.** Reference papers (kept locally, not redistributed). |
 
 See [.claude/docs/architectural_patterns.md](.claude/docs/architectural_patterns.md) for the staged-debug pattern, viewer plugin model, and config-naming scheme.
 
