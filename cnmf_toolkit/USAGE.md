@@ -59,7 +59,7 @@ STEP-BY-STEP (copy-paste these commands)
 
 OUTPUT FILES (auto-created)
 ---------------------------
-  cnmf_debug_outputs/       Per-stage matrices, PNGs, metadata
+  ../data/results/debug_outputs/   Per-stage matrices, PNGs, metadata
     init_0.npz              Dense arrays (C, S, YrA, b, f, ...)
     init_0_A.npz            Sparse spatial components (A)
     metadata_init_0.txt     Shape/size info
@@ -67,7 +67,7 @@ OUTPUT FILES (auto-created)
     YrA_traces_init_0.png   Residual traces
     ... (same pattern for spatial_1, temporal_1, merge, etc.)
 
-  cnmf_results/             Final HDF5 + config JSON
+  ../data/results/hdf5/            Final HDF5 + config JSON
     cnmf_results_<config>_<timestamp>.hdf5
     config_<config>_<timestamp>.json
 
@@ -98,8 +98,8 @@ can use 5-10x that during processing. Recovery steps:
        CNMF_DEBUG=0 python cnmf_runner.py <movie.tif>
 
   5. Check if partial results were saved:
-       ls -la cnmf_debug_outputs/    # per-stage data
-       ls -la cnmf_results/          # final HDF5
+       ls -la ../data/results/debug_outputs/    # per-stage data
+       ls -la ../data/results/hdf5/             # final HDF5
 
   6. If debug stages exist but no final HDF5, you can still view
      the partial results:
@@ -118,7 +118,7 @@ corrections) and view it in the napari viewer, follow these steps:
   2. Save the stage using CNMFDebugTracker from a Python script or REPL:
 
        from debug_tracker import CNMFDebugTracker
-       tracker = CNMFDebugTracker(save_dir="cnmf_debug_outputs")
+       tracker = CNMFDebugTracker(save_dir="../data/results/debug_outputs")
 
        # A = spatial components (sparse or dense, pixels × components)
        # C = temporal traces (components × frames)
@@ -134,7 +134,7 @@ corrections) and view it in the napari viewer, follow these steps:
            YrA=my_YrA_matrix,  # optional (residuals)
        )
 
-     This creates three files in cnmf_debug_outputs/:
+     This creates three files in ../data/results/debug_outputs/:
        my_stage_0.npz         Dense arrays (C, S, YrA, b, f, ...)
        my_stage_0_A.npz       Sparse A matrix (if A was sparse)
        metadata_my_stage_0.txt
@@ -152,7 +152,7 @@ corrections) and view it in the napari viewer, follow these steps:
 
   Note: The viewer expects stage files to follow the naming convention
   {stage_name}_0.npz for dense arrays and {stage_name}_0_{key}.npz for
-  sparse matrices (e.g. A). The StageStore scans cnmf_debug_outputs/
+  sparse matrices (e.g. A). The StageStore scans ../data/results/debug_outputs/
   at startup and will automatically pick up any stage whose name matches
   an entry in STAGE_DEFINITIONS.
 
