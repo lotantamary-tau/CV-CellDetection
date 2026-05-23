@@ -207,7 +207,8 @@ class CNMFDebugStageViewer:
 
         # Update title
         self.viewer.title = (
-            f"CNMF Debug Viewer -- {self._entry.info['name']} "
+            f"CNMF Debug Viewer  |  Run {self.store.current_run_id}  |  "
+            f"Phase {self.store.current_phase}  |  {self._entry.info['name']} "
             f"({n_components} components)"
         )
 
@@ -226,6 +227,29 @@ class CNMFDebugStageViewer:
         self.current_stage = stage_name
         self.store.load(self.current_stage)
 
+        self._display_stage()
+        self.print_stage_info()
+
+    def _reload_current(self) -> None:
+        """Reload the current stage after a run or phase switch.
+
+        Falls back to best_initial_stage() if the previously-selected stage
+        name doesn't exist in the newly-selected phase (e.g. switching from
+        refit to fit can move from 'spatial_1' to 'patches_init').
+        """
+        stages_now = list(self.store)
+        if not stages_now:
+            log.warning("_reload_current: no stages in current selection.")
+            return
+        if self.current_stage not in stages_now:
+            self.current_stage = self.store.best_initial_stage()
+        else:
+            # Force unload of cached entry to pick up new files
+            try:
+                self.store.unload(self.current_stage)
+            except Exception:
+                pass
+        self.store.load(self.current_stage)
         self._display_stage()
         self.print_stage_info()
 
@@ -263,25 +287,65 @@ class CNMFDebugStageViewer:
             )
 
         print(
-            "\nKeys: 1-8 stages | S info "
-            "| I component | SPACE/click ROI"
+            "\nKeys: F1-F7 stage | F8 phase | F9/F10 run | "
+            "S info | I component | SPACE/click ROI"
+        )
+        print(
+            f"Run {self.store.current_run_id}  |  Phase {self.store.current_phase}"
         )
 
     # ------------------------------------------------------------------
     # Key bindings
     # ------------------------------------------------------------------
     def _bind_keys(self) -> None:
-        stage_keys = {
-            '1': 'init',      '2': 'spatial_1',  '3': 'temporal_1',
-            '4': 'merge',     '5': 'spatial_2',  '6': 'temporal_2',
-            '7': 'final',     '8': 'cnn',
-        }
+        # F1-F7 each bind to a function that resolves the stage AT KEYPRESS TIME.
+        # This lets the mapping re-target whenever the user switches phase or run
+        # (since list(self.store) changes accordingly).
+        for i, fkey in enumerate(['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7']):
+            @self.viewer.bind_key(fkey, overwrite=True)
+            def _switch_by_index(viewer, _idx=i, _key=fkey):
+                stages_now = list(self.store)
+                if _idx >= len(stages_now):
+                    log.info("%s: no stage at index %d (current phase has %d stages)",
+                             _key, _idx, len(stages_now))
+                    return
+                target = stages_now[_idx]
+                self.switch_stage(target)
 
-        for key, sname in stage_keys.items():
-            @self.viewer.bind_key(key, overwrite=True)
-            def _switch(viewer, _sn=sname):
-                self.switch_stage(_sn)
+        # F8 toggle phase (fit <-> refit)
+        @self.viewer.bind_key('F8', overwrite=True)
+        def _toggle_phase(viewer):
+            other = self.store.other_phase()
+            if other is None:
+                log.info("Only one phase available in this run; nothing to toggle.")
+                return
+            if self.store.switch_phase(other):
+                log.info("Switched to phase: %s", other)
+                self._reload_current()
 
+        # F9 previous run
+        @self.viewer.bind_key('F9', overwrite=True)
+        def _prev_run(viewer):
+            prev = self.store.previous_run()
+            if prev is None:
+                log.info("Already at the oldest run.")
+                return
+            if self.store.switch_run(prev):
+                log.info("Switched to run: %s", prev)
+                self._reload_current()
+
+        # F10 next run
+        @self.viewer.bind_key('F10', overwrite=True)
+        def _next_run(viewer):
+            nxt = self.store.next_run()
+            if nxt is None:
+                log.info("Already at the newest run.")
+                return
+            if self.store.switch_run(nxt):
+                log.info("Switched to run: %s", nxt)
+                self._reload_current()
+
+        # Existing info / interaction keys (unchanged):
         @self.viewer.bind_key('s', overwrite=True)
         def _info(viewer):
             self.print_stage_info()
