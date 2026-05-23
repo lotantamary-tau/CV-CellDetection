@@ -10,7 +10,14 @@ data/
 ├── RawData/             input  — raw TIF movies that CNMF processes
 ├── TaggedData/          input  — manually-tagged ROI labels (used for validation)
 └── results/             output — everything CNMF produces
-    ├── debug_outputs/   per-stage .npz / metadata snapshots from each CNMF stage
+    ├── debug_outputs/   per-stage .npz / metadata snapshots
+    │   └── run_YYYYMMDD_HHMMSS/   one folder per CNMF invocation
+    │       ├── fit/                 always present from cnmf_runner.py;
+    │       │   ├── <stage>.npz                from notebook if DEBUG_FIT=True
+    │       │   ├── metadata_<stage>.txt
+    │       │   └── ...
+    │       └── refit/               from notebook if DEBUG_REFIT=True
+    │           └── (same stage files as fit/)
     └── hdf5/            final HDF5 + config JSON written by cnmf_runner.py
 ```
 
@@ -22,13 +29,14 @@ Everything under `data/` is gitignored **except this README and the empty `.gitk
 
 1. **Add your raw movies** to `data/RawData/`. Example: `data/RawData/my_movie.tif`.
 2. **Add validation labels** (if you have any) to `data/TaggedData/`.
-3. **Run CNMF** from `cnmf_toolkit/`:
-   ```bash
-   cd cnmf_toolkit
-   python cnmf_runner.py "../data/RawData/my_movie.tif"
-   ```
-4. **Outputs land automatically** in `data/results/debug_outputs/` and `data/results/hdf5/` — those folders already exist (via `.gitkeep`) and the toolkit fills them.
-5. **View results** with `python cnmf_viewer.py` — it reads from `data/results/` by default.
+3. **Run CNMF**:
+   - From the terminal: `cd cnmf_toolkit && python cnmf_runner.py "../data/RawData/my_movie.tif"`.
+     Always produces a `run_<ts>/fit/` snapshot.
+   - From the notebook (`notebooks/OPCal_cell detection_caiman_150226.ipynb`):
+     set `DEBUG_FIT = True` and/or `DEBUG_REFIT = True` at the top, then Run-All.
+     Each enabled flag produces its corresponding subfolder.
+4. **Outputs land automatically** in `data/results/debug_outputs/run_<ts>/<phase>/` and `data/results/hdf5/`.
+5. **View results** with `python cnmf_viewer.py` — it defaults to the most-recent run and the refit phase (if present).
 
 ## Overriding output locations
 
