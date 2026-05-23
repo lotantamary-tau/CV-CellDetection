@@ -80,16 +80,16 @@ tracker = CNMFDebugTracker(
 ```
 
 ## What gets uploaded
-Each run creates a timestamped sub-folder in your Google Drive folder:
+Each run creates a timestamped sub-folder in your Google Drive folder, mirroring the local `data/results/debug_outputs/run_<TS>/<phase>/` layout. Stage files use plain names (no `_N` counter) because the per-phase subfolder discriminates between fit and refit:
 ```
 cnmf_debug_20260214_153042/
-    init_0.npz
-    metadata_init_0.txt
-    ROI_0_init_0.png
-    ROI_1_init_0.png
+    init.npz
+    metadata_init.txt
+    ROI_0_init.png
+    ROI_1_init.png
     ...
-    YrA_traces_init_0.png
-    spatial_update_0.npz
+    YrA_traces_init.png
+    spatial_1.npz
     ...
 ```
 

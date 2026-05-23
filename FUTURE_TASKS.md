@@ -19,24 +19,16 @@ Lightweight, low-priority improvements we've noticed but haven't acted on. Pick 
 
 ---
 
-## 2. Multi-run isolation in `data/results/debug_outputs/`
+## 2. ~~Multi-run isolation in `data/results/debug_outputs/`~~ — RESOLVED
 
-**Problem.** `CNMFDebugTracker.stage_counter` resets to 0 every time the tracker is instantiated (per-instance state, not persisted to disk). Combined with no pre-run cleanup, this means:
-
-- Run #2 silently overwrites run #1 files that share names (`init_0.npz`, `ROI_5_init_0.png`, …).
-- Run #2 leaves stale files from run #1 behind whenever run #1 had more components or different stages (e.g., `ROI_233_*.png` from a 234-component run sticks around if run #2 finds 100).
-- The napari viewer then loads a mixed-run folder with no warning.
-
-**Possible fixes (pick one).**
-- **A. Per-run subfolder (cleanest).** Tracker creates a timestamped sub-directory `data/results/debug_outputs/run_YYYYMMDD_HHMMSS/` on init. Each run is fully isolated. Viewer either accepts a `--run` argument or auto-picks the most recent.
-- **B. Wipe-on-start (simpler).** Before the first `save_stage` call, the tracker clears its `save_dir`. One-line behavior change but destructive — easy to lose data accidentally.
-- **C. Continue-the-counter (smallest change).** On init, scan existing files matching `{stage}_*.npz`, set `stage_counter[stage]` to one past the highest seen. Files coexist (`init_0.npz` from run #1, `init_1.npz` from run #2), but the viewer needs to learn to filter by run.
-
-**Recommendation.** Option A. Cleanest semantics, easy for the viewer to handle, plays nicely with the existing `_upload_stage_files` GDrive logic (a per-run folder maps naturally to a per-run GDrive folder, which the code already creates).
-
-**Where to change.**
-- `cnmf_toolkit/debug_tracker.py:34-46` — adjust `save_dir` to append a timestamped sub-dir.
-- `cnmf_toolkit/viewer/stage_store.py` — teach it to look in the most recent sub-dir (or accept an explicit one).
+Resolved by the same 2026-05-23 multi-run + fit/refit + dynamic keymap
+refactor that closed #3 and #4. Implemented Option A (per-run subfolder):
+the tracker auto-generates a `run_id` timestamp at construction and writes
+to `data/results/debug_outputs/run_<TS>/<phase>/<stage>.npz`. Each CNMF
+invocation gets its own isolated folder — no silent overwrites between
+runs, and the viewer walks between runs with F9/F10. The per-instance
+`stage_counter` is gone; the run+phase subfolder hierarchy discriminates
+between invocations instead.
 
 ---
 
