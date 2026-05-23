@@ -72,7 +72,7 @@ python cnmf_runner.py path/to/movie.tif --config greedy_roi_no_patches_config
 python cnmf_viewer.py
 ```
 
-The viewer is keyboard-driven: digit keys (1–8) switch between pipeline stages, click on an ROI to open a component-analysis plot. Full controls and per-stage output format are documented in [cnmf_toolkit/USAGE.md](cnmf_toolkit/USAGE.md).
+The viewer is keyboard-driven: `F1`–`F7` switch between pipeline stages (dynamically bound to the stages present in the current phase), `F8` toggles fit ↔ refit, `F9`/`F10` walk between past runs, and clicking an ROI opens a component-analysis plot. Each CNMF invocation lands in its own `data/results/debug_outputs/run_<ts>/<phase>/` subfolder. Full controls and per-stage output format are documented in [cnmf_toolkit/USAGE.md](cnmf_toolkit/USAGE.md).
 
 ## Optional: Google Drive offload of debug outputs
 
