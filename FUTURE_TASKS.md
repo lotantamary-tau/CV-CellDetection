@@ -40,73 +40,23 @@ Lightweight, low-priority improvements we've noticed but haven't acted on. Pick 
 
 ---
 
-## 3. Stage-switch keys 1 & 2 collide with napari built-in shortcuts
+## 3. ~~Stage-switch keys 1 & 2 collide with napari built-in shortcuts~~ — RESOLVED
 
-**Problem.** `viewer/stage_viewer.py:271` binds digit keys `1`–`8` to stage switching. Keys 3–7 work, but **`1` and `2` are silently intercepted by napari's layer-level shortcuts** (`1` = pan/zoom mode, `2` = transform mode). These are wired at the Qt event level so `viewer.bind_key('1', overwrite=True)` doesn't actually win — the user's keypress never reaches `switch_stage('init')`. There's a visible hint at the bottom-right of the napari window that gives this away: `use <2> for transform`.
-
-**Fix.** Remap the conflicting keys in `_bind_keys()`:
-- Option A: keep digit keys but remap `1`/`2` to non-conflicting alternatives (e.g., `Q` for init, `W` for spatial_1, then `3`–`7` continue as today).
-- Option B: move all stage shortcuts off digits onto letters (`Q W E R T Y U` for the 7 stages).
-- Option C: use function keys (`F1`–`F7`).
-
-**Recommendation.** Option B (letters Q–U) is the cleanest — uniform, easy to remember (sequential row on the keyboard), and dodges every built-in conflict. Update `USAGE.md` keybinding doc to match.
-
-**Where to change.**
-- `cnmf_toolkit/viewer/stage_viewer.py:270-274` — the `stage_keys` dict.
-- `cnmf_toolkit/viewer/stage_viewer.py:262-263` — the printed help banner.
-- `cnmf_toolkit/USAGE.md` — keybinding documentation.
+Resolved by the 2026-05-23 multi-run + fit/refit + dynamic keymap refactor:
+stage keys moved off digits onto F1-F7. F-keys have no napari built-in
+conflict. The mapping is also dynamic — F1 binds to the first stage in the
+current phase's pipeline order, F2 to the second, and so on — so it works
+for both the patches-based fit phase and the non-patches refit phase.
 
 ---
 
-## 4. Wire the lab notebook into the debug tracker / viewer (with a debug-mode toggle)
+## 4. ~~Wire the lab notebook into the debug tracker / viewer~~ — RESOLVED
 
-**Problem.** The debug tracker + napari viewer only fire when CNMF is run via `cnmf_runner.py` / `CNMFManager` (which use `instrumented_cnmf.CNMF`). The lab notebook (`notebooks/OPCal_cell detection_caiman_150226.ipynb`) imports `CNMF` directly from upstream `caiman.source_extraction.cnmf` and applies its own lab-refined logic (custom parameter tweaks, post-processing, refit, evaluation). Result: the viewer has nothing to show for the *actual* analysis the lab runs in production — only the runner's path. We can inspect the toolkit's CaImAn-style pipeline but not the notebook's lab pipeline.
-
-**What we want.** A switchable connection. When the lab is doing normal analysis, the notebook behaves exactly as it does today — zero debug overhead, no extra files. When someone wants to *inspect* a stage in napari, they flip a single flag at the top of the notebook, Run-All, then launch `cnmf_viewer.py` — the viewer finds the stages exactly the way it loads runner output today.
-
-**Two implementation options to consider — pick before executing.** Both produce the same user-visible behavior (a `DEBUG_MODE` flag at the top of the notebook); they differ in *how* the toggle is wired underneath.
-
-### Option A — branch on the import (simpler)
-
-```python
-DEBUG_MODE = False   # set True to enable per-stage debug snapshots for the viewer
-
-if DEBUG_MODE:
-    import sys; sys.path.insert(0, '../cnmf_toolkit')
-    from instrumented_cnmf import CNMF
-else:
-    from caiman.source_extraction.cnmf.cnmf import CNMF
-```
-
-- **How it works.** Two completely separate CNMF classes get loaded depending on the flag. In `DEBUG_MODE = False` the notebook never even imports the instrumentation — zero overhead, zero risk of accidentally writing to `data/results/`. In `DEBUG_MODE = True` it imports the instrumented class and the hooks fire automatically.
-- **Pros.** Trivially simple — flip one line, Run-All. Non-debug mode is byte-identical to the original notebook (no chance of behavior drift). Easy for friends to understand at a glance.
-- **Cons.** Two import paths means two code paths, which is harder to reason about if someone later changes the upstream caiman version vs. the instrumented version. Not really a problem in practice since `instrumented_cnmf.py` is a near-verbatim copy of upstream.
-
-### Option B — always import the instrumented class, toggle the tracker (cleaner architecture)
-
-```python
-import sys; sys.path.insert(0, '../cnmf_toolkit')
-from instrumented_cnmf import CNMF
-from debug_tracker import CNMFDebugTracker
-
-DEBUG_MODE = False
-tracker = CNMFDebugTracker(enabled=DEBUG_MODE)   # no-op when disabled
-# ...later, when constructing the CNMF object, pass the tracker through.
-```
-
-- **How it works.** The notebook *always* uses the instrumented CNMF, but the tracker has an `enabled` flag (`debug_tracker.py:34`) that makes `save_stage` a no-op when False. So in non-debug mode the instrumentation is loaded but does nothing — same behavior, same outputs.
-- **Pros.** Single code path. There's only one `CNMF` class to reason about. Closer to the runner's behavior, so any future improvement to the instrumented class flows to both runner and notebook.
-- **Cons.** Slightly more machinery upfront — needs to plumb the tracker into the CNMF constructor (the runner does this automatically; the notebook would need to do it explicitly). Microscopically slower import time (loads `debug_tracker` and its matplotlib import).
-
-### Recommendation
-
-**Start with Option A** unless someone has a specific reason to prefer B. A is a 4-line change to the notebook with no tracker plumbing required, and labs are used to "flip flag, re-run." Switch to B later if the lab notebook starts wanting to capture *some* stages but not others (e.g., capture only the refit, not the initial fit) — at that point the tracker's `enabled` flag is more flexible than an import branch.
-
-**Where to change (Option A).**
-- `notebooks/OPCal_cell detection_caiman_150226.ipynb` — at the very top of the notebook, add the `DEBUG_MODE = False` cell with the conditional import. Update the cell that imports `CNMF` so it doesn't redundantly import again.
-- `data/README.md` and `cnmf_toolkit/USAGE.md` — mention the toggle: "set `DEBUG_MODE = True` in the notebook + Run-All to write debug outputs; then `python cnmf_viewer.py` to inspect."
-
-**Verification.** Run the notebook with `DEBUG_MODE = False`: nothing new in `data/results/`. Run with `DEBUG_MODE = True`: see fresh `.npz` files in `data/results/debug_outputs/` and a new HDF5 in `data/results/hdf5/`. Then `python cnmf_viewer.py` should load the notebook's stages. (If both runner and notebook end up writing to the same folder, see future task #2 — multi-run isolation — to keep them separated.)
+Resolved by the same 2026-05-23 refactor: notebook has `DEBUG_FIT` and
+`DEBUG_REFIT` boolean toggles at the top; the tracker is phase-aware
+(writes to `run_<ts>/fit/` or `/refit/`); the viewer can walk between runs
+(F9/F10) and toggle phase (F8). The viewer's stage discovery is dynamic so
+it handles patches and non-patches stage sets seamlessly.
 
 ---
 
