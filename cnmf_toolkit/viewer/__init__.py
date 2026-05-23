@@ -25,15 +25,38 @@ log = logging.getLogger("viewer")
 # ---------------------------------------------------------------------------
 # Constants shared across the package
 # ---------------------------------------------------------------------------
+# Catalogue of all stage names that instrumented_cnmf.py may emit, with
+# their canonical position in the CNMF pipeline. Multiple stage names can
+# share an 'order' when they are alternatives — e.g. 'init' and
+# 'patches_init' both occupy "stage 1" but only one fires per configuration
+# (non-patches vs patches mode), so they never coexist in the same phase
+# folder. The viewer's stage_store does dynamic discovery: any *.npz file
+# present on disk gets catalogued, even if the stage name is not listed
+# here — unknown stages just sort last (order=999) with a default display
+# name. F1-F7 keys are bound dynamically to the Nth stage in pipeline
+# order within the current phase, not to specific stage names.
 STAGE_DEFINITIONS = {
-    'init':       {'order': 1, 'name': 'Initial Detection',  'key': '1'},
-    'spatial_1':  {'order': 2, 'name': 'Spatial Update 1',   'key': '2'},
-    'temporal_1': {'order': 3, 'name': 'Temporal Update 1',  'key': '3'},
-    'merge':      {'order': 4, 'name': 'Component Merging',  'key': '4'},
-    'spatial_2':  {'order': 5, 'name': 'Spatial Update 2',   'key': '5'},
-    'temporal_2': {'order': 6, 'name': 'Temporal Update 2',  'key': '6'},
-    'final':      {'order': 7, 'name': 'Final Results',      'key': '7'},
-    'cnn':        {'order': 8, 'name': 'CNN Evaluation',      'key': '8'},
+    # Always-present preprocess step
+    'preprocess':         {'order': 0,  'name': 'Preprocess'},
+    # Initialization variants (mutually exclusive across configs)
+    'init':               {'order': 1,  'name': 'Initial Detection'},
+    'patches_init':       {'order': 1,  'name': 'Patches Init'},
+    'only_init_final':    {'order': 1,  'name': 'Only-Init Final'},
+    # Spatial / temporal updates (non-patches vs patches variants)
+    'spatial_1':          {'order': 2,  'name': 'Spatial Update 1'},
+    'patches_spatial':    {'order': 2,  'name': 'Patches Spatial'},
+    'temporal_1':         {'order': 3,  'name': 'Temporal Update 1'},
+    'patches_temporal_1': {'order': 3,  'name': 'Patches Temporal 1'},
+    'merge':              {'order': 4,  'name': 'Component Merging'},
+    'patches_merge':      {'order': 4,  'name': 'Patches Merge'},
+    'spatial_2':          {'order': 5,  'name': 'Spatial Update 2'},
+    'temporal_2':         {'order': 6,  'name': 'Temporal Update 2'},
+    'patches_temporal_2': {'order': 6,  'name': 'Patches Temporal 2'},
+    'patches_deconvolve': {'order': 7,  'name': 'Patches Deconvolve'},
+    'patches_temporal':   {'order': 7,  'name': 'Patches Temporal'},
+    # Final
+    'final':              {'order': 8,  'name': 'Final Results'},
+    'cnn':                {'order': 9,  'name': 'CNN Evaluation'},
 }
 
 MATRIX_NAMES = ('A', 'C', 'S', 'YrA', 'b', 'f')
