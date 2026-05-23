@@ -1,7 +1,7 @@
 ================================================================================
   CNMF_TOOLKIT — USAGE GUIDE & CRASH RECOVERY
 ================================================================================
-  Last updated: 2026-05-03
+  Last updated: 2026-05-23
 ================================================================================
 
 PURPOSE
@@ -46,30 +46,72 @@ STEP-BY-STEP (copy-paste these commands)
   ┌──────────────────────────────────────────────────────────────────┐
   │ STEP 2 — View results in napari                                  │
   │                                                                  │
-  │   python cnmf_viewer.py                              │
+  │   python cnmf_viewer.py                                          │
   │                                                                  │
-  │   Controls:                                                      │
-  │     1-8        Switch stages (init → spatial → temporal → etc.)  │
-  │     Click ROI  Detailed component analysis plot                  │
-  │     SPACE      Analyze ROI at cursor                             │
-  │     S          Print stage stats                                 │
-  │     I          Top-10 most active components                     │
+  │   See "NAPARI VIEWER KEY BINDINGS" below for the full keymap.    │
   └──────────────────────────────────────────────────────────────────┘
 
 
 OUTPUT FILES (auto-created)
 ---------------------------
-  ../data/results/debug_outputs/   Per-stage matrices, PNGs, metadata
-    init_0.npz              Dense arrays (C, S, YrA, b, f, ...)
-    init_0_A.npz            Sparse spatial components (A)
-    metadata_init_0.txt     Shape/size info
-    ROI_*_init_0.png        Individual ROI masks
-    YrA_traces_init_0.png   Residual traces
+  ../data/results/debug_outputs/run_<TS>/<phase>/   Per-stage matrices, PNGs, metadata
+    init.npz                Dense arrays (C, S, YrA, b, f, ...)
+    init_A.npz              Sparse spatial components (A)
+    metadata_init.txt       Shape/size info + run_id + phase
+    ROI_*_init.png          Individual ROI masks
+    YrA_traces_init.png     Residual traces
     ... (same pattern for spatial_1, temporal_1, merge, etc.)
+
+  Where:
+    <TS>     = timestamp of this CNMF invocation (YYYYMMDD_HHMMSS)
+    <phase>  = 'fit' for any cnmf_runner.py run, or 'fit' / 'refit' from
+               the notebook (set by DEBUG_FIT and DEBUG_REFIT flags)
+
+  Stage names depend on the CaImAn config:
+    Non-patches mode (runner, notebook refit): preprocess, init, spatial_1,
+      temporal_1, merge, spatial_2, temporal_2, final
+    Patches mode (notebook initial fit): patches_init, patches_merge,
+      patches_temporal, final (subset of all patches stages)
 
   ../data/results/hdf5/            Final HDF5 + config JSON
     cnmf_results_<config>_<timestamp>.hdf5
     config_<config>_<timestamp>.json
+
+
+NAPARI VIEWER KEY BINDINGS
+--------------------------
+  STAGE SELECTION (F1-F7 bind dynamically to the Nth stage in the
+                   CURRENT phase's pipeline order; the same key always
+                   means "next thing in the pipeline" regardless of
+                   which stages were emitted)
+    Example for the notebook's REFIT phase (non-patches):
+      F1   preprocess    F2   init           F3   spatial_1
+      F4   temporal_1    F5   merge          F6   spatial_2
+      F7   temporal_2 / final (depending on stages present)
+    Example for the notebook's FIT phase (patches mode):
+      F1   patches_init  F2   patches_merge  F3   patches_temporal
+      F4   final
+    If a phase has fewer stages, the unused F-keys log "no stage at
+    index N" and do nothing.
+
+  PHASE / RUN NAVIGATION
+    F8   toggle phase (fit ↔ refit) — useful for inspecting the lab's
+         refinement step in the notebook
+    F9   previous run — walk back through prior CNMF invocations
+    F10  next run     — walk forward to a newer CNMF invocation
+
+  INFO & INTERACTION
+    S         print stage info to terminal
+    I         print component info to terminal
+    SPACE     analyze the ROI under the cursor
+    click     same as SPACE (mouse interaction)
+
+  NOTES
+    - F-keys chosen because napari has no built-in shortcuts on them
+      (digits 1 and 2 are intercepted by napari's layer-mode shortcuts).
+    - Title bar always shows: Run <ts> | Phase <name> | <stage>
+    - Multiple runs accumulate — each CNMF invocation creates a new
+      run_<ts>/ folder. F9/F10 walks between them.
 
 
 IF THE COMPUTER CRASHES / FREEZES
@@ -98,8 +140,8 @@ can use 5-10x that during processing. Recovery steps:
        CNMF_DEBUG=0 python cnmf_runner.py <movie.tif>
 
   5. Check if partial results were saved:
-       ls -la ../data/results/debug_outputs/    # per-stage data
-       ls -la ../data/results/hdf5/             # final HDF5
+       ls -la ../data/results/debug_outputs/run_*/    # per-run, per-phase data
+       ls -la ../data/results/hdf5/                   # final HDF5
 
   6. If debug stages exist but no final HDF5, you can still view
      the partial results:
@@ -134,27 +176,28 @@ corrections) and view it in the napari viewer, follow these steps:
            YrA=my_YrA_matrix,  # optional (residuals)
        )
 
-     This creates three files in ../data/results/debug_outputs/:
-       my_stage_0.npz         Dense arrays (C, S, YrA, b, f, ...)
-       my_stage_0_A.npz       Sparse A matrix (if A was sparse)
-       metadata_my_stage_0.txt
+     This creates three files in ../data/results/debug_outputs/run_<TS>/<phase>/:
+       my_stage.npz         Dense arrays (C, S, YrA, b, f, ...)
+       my_stage_A.npz       Sparse A matrix (if A was sparse)
+       metadata_my_stage.txt
 
-  3. Add a key binding in viewer/stage_viewer.py (_bind_keys method):
+  3. No manual key-binding step is needed — F1-F7 bind dynamically to
+     the stages present in the current phase's pipeline order. As long
+     as your stage name appears in STAGE_DEFINITIONS, the viewer slots
+     it into the keymap automatically based on its 'order' value.
 
-       stage_keys = {
-           ...
-           '9': 'my_stage',    # <-- add this line
-       }
-
-  4. Launch the viewer and press 9 to switch to your stage:
+  4. Launch the viewer:
 
        python cnmf_viewer.py
 
+     The F-key that activates your stage depends on how many earlier
+     stages (lower 'order') are present in the same phase.
+
   Note: The viewer expects stage files to follow the naming convention
-  {stage_name}_0.npz for dense arrays and {stage_name}_0_{key}.npz for
-  sparse matrices (e.g. A). The StageStore scans ../data/results/debug_outputs/
-  at startup and will automatically pick up any stage whose name matches
-  an entry in STAGE_DEFINITIONS.
+  {stage_name}.npz for dense arrays and {stage_name}_{key}.npz for
+  sparse matrices (e.g. A), inside a run_<TS>/<phase>/ subfolder. The
+  StageStore scans ../data/results/debug_outputs/ hierarchically and
+  picks up any stage whose name matches an entry in STAGE_DEFINITIONS.
 
 
 AVAILABLE CONFIGS
