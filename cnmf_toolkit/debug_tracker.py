@@ -117,7 +117,7 @@ class CNMFDebugTracker:
     def enable(self):
         """Re-enable snapshot writing. Idempotent."""
         self.enabled = True
-        os.makedirs(self.save_dir, exist_ok=True)
+        self._refresh_save_dir()
 
     def disable(self):
         """Stop writing snapshots. Subsequent save_stage calls are no-ops."""
