@@ -103,7 +103,6 @@ NAPARI VIEWER KEY BINDINGS
               of stages, phases, and runs — useful for orientation)
     I         print component info to terminal
     SPACE     analyze the ROI under the cursor
-    click     same as SPACE (mouse interaction)
 
   NOTES
     - F-keys chosen because napari has no built-in shortcuts on them
@@ -111,6 +110,9 @@ NAPARI VIEWER KEY BINDINGS
     - Stage navigation adapts to the algorithm's actual output: phases
       from the patches-mode fit have ~4 stages, no-patches phases have
       7-8 stages. The same F5/F6 walks through whatever is there.
+    - Mouse click is NOT bound (napari's pan/zoom mode intercepts it).
+      Use SPACE to analyze the ROI under the cursor. Double-clicking still
+      zooms into the canvas — that's a napari default, not our binding.
     - When you switch run (F1/F2) or phase (F3/F4), the viewer ALWAYS
       resets to the "final" stage (or the last stage if there's no
       'final'). Phase also resets to 'refit' (if present) on run switch.
