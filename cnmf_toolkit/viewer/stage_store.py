@@ -327,7 +327,11 @@ class StageStore:
         return True
 
     def previous_run(self) -> Optional[str]:
-        """Return the run_id of the run before the current one, or None."""
+        """Circular: return the run_id of the run before the current one.
+
+        Wraps to the last run if currently at the oldest. Returns None only
+        if there are no runs at all.
+        """
         runs = self.available_runs()
         if not runs or self.current_run_id is None:
             return None
@@ -335,12 +339,14 @@ class StageStore:
             idx = runs.index(self.current_run_id)
         except ValueError:
             return None
-        if idx <= 0:
-            return None
-        return runs[idx - 1]
+        return runs[idx - 1] if idx > 0 else runs[-1]
 
     def next_run(self) -> Optional[str]:
-        """Return the run_id of the run after the current one, or None."""
+        """Circular: return the run_id of the run after the current one.
+
+        Wraps to the first run if currently at the newest. Returns None only
+        if there are no runs at all.
+        """
         runs = self.available_runs()
         if not runs or self.current_run_id is None:
             return None
@@ -348,9 +354,70 @@ class StageStore:
             idx = runs.index(self.current_run_id)
         except ValueError:
             return None
-        if idx >= len(runs) - 1:
+        return runs[idx + 1] if idx + 1 < len(runs) else runs[0]
+
+    def previous_stage(self) -> Optional[str]:
+        """Circular: return the previous stage name in the current phase's pipeline order.
+
+        Wraps to the last stage if currently at the first. Returns None if
+        no stages are loaded.
+        """
+        stages = list(self)
+        if not stages:
             return None
-        return runs[idx + 1]
+        try:
+            idx = stages.index(self.current_stage_name())
+        except (ValueError, RuntimeError):
+            return stages[0]
+        return stages[idx - 1] if idx > 0 else stages[-1]
+
+    def next_stage(self) -> Optional[str]:
+        """Circular: return the next stage name in the current phase's pipeline order."""
+        stages = list(self)
+        if not stages:
+            return None
+        try:
+            idx = stages.index(self.current_stage_name())
+        except (ValueError, RuntimeError):
+            return stages[0]
+        return stages[idx + 1] if idx + 1 < len(stages) else stages[0]
+
+    def current_stage_name(self) -> Optional[str]:
+        """Return the name of the stage the viewer is currently displaying.
+
+        StageStore itself doesn't track the active stage (the viewer does),
+        so this is provided as an override hook. Default returns None;
+        the viewer can set ``store.current_stage_name = lambda: self.current_stage``
+        or override on a subclass. In our setup the viewer sets it via the
+        attribute ``_current_stage_name`` (set by the viewer when it switches).
+        """
+        return getattr(self, '_current_stage_name', None)
+
+    def previous_phase(self) -> Optional[str]:
+        """Circular: return the previous phase in the current run."""
+        if self.current_run_id is None:
+            return None
+        phases = list(self.runs[self.current_run_id].keys())
+        if not phases:
+            return None
+        try:
+            idx = phases.index(self.current_phase)
+        except ValueError:
+            return phases[0]
+        return phases[idx - 1] if idx > 0 else phases[-1]
+
+    def next_phase(self) -> Optional[str]:
+        """Circular: return the next phase in the current run."""
+        if self.current_run_id is None:
+            return None
+        phases = list(self.runs[self.current_run_id].keys())
+        if not phases:
+            return None
+        try:
+            idx = phases.index(self.current_phase)
+        except ValueError:
+            return phases[0]
+        return phases[idx + 1] if idx + 1 < len(phases) else phases[0]
 
     def other_phase(self) -> Optional[str]:
         """Return the OTHER phase in the current run, or None if only one exists."""

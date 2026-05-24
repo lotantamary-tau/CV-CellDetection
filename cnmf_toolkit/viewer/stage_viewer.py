@@ -51,6 +51,7 @@ class CNMFDebugStageViewer:
 
         # Pick initial stage
         self.current_stage = self.store.best_initial_stage()
+        self.store._current_stage_name = self.current_stage
         self.store.load(self.current_stage)
         log.info("Starting with stage: %s", self.current_stage)
 
@@ -225,6 +226,7 @@ class CNMFDebugStageViewer:
 
         self.store.unload(self.current_stage)
         self.current_stage = stage_name
+        self.store._current_stage_name = stage_name
         self.store.load(self.current_stage)
 
         self._display_stage()
@@ -249,6 +251,7 @@ class CNMFDebugStageViewer:
                 self.store.unload(self.current_stage)
             except Exception:
                 pass
+        self.store._current_stage_name = self.current_stage
         self.store.load(self.current_stage)
         self._display_stage()
         self.print_stage_info()
@@ -262,17 +265,8 @@ class CNMFDebugStageViewer:
         info = entry.info
         matrices = self._matrices
 
-        # Dynamic F-key label: compute from the stage's index in the current
-        # phase's pipeline order, since the keymap is dynamic now.
-        stages_now = list(self.store)
-        try:
-            idx = stages_now.index(self.current_stage)
-            key_label = f"F{idx + 1}" if idx < 7 else "(no key)"
-        except ValueError:
-            key_label = "?"
-
         print(f"\n{'=' * 60}")
-        print(f"STAGE: {info['name'].upper()}  (key {key_label})")
+        print(f"STAGE: {info['name'].upper()}")
         print(f"{'=' * 60}")
         print(f"Components : {get_n_components(matrices)}")
         print(f"Frames     : {get_n_frames(matrices)}")
@@ -287,17 +281,27 @@ class CNMFDebugStageViewer:
             for k, v in meta.items():
                 print(f"  {k}: {v}")
 
-        print("\nAvailable stages:")
-        for i, (sname, sentry) in enumerate(self.store.items()):
+        # Stages in current phase
+        print("\nStages in this phase (F1=prev, F2=next):")
+        for sname, sentry in self.store.items():
             marker = ">> " if sname == self.current_stage else "   "
             loaded = "(loaded)" if sentry.is_loaded else ""
-            key_label = f"F{i + 1}" if i < 7 else " --"
-            print(
-                f"  {marker}{key_label}: {sentry.info['name']} {loaded}"
-            )
+            print(f"  {marker}{sentry.info['name']} {loaded}")
+
+        # Phases in current run
+        print("\nPhases in this run (F3=prev, F4=next):")
+        for phase in self.store.available_phases():
+            marker = ">> " if phase == self.store.current_phase else "   "
+            print(f"  {marker}{phase}")
+
+        # Runs (all)
+        print("\nRuns (F5=prev, F6=next):")
+        for run_id in self.store.available_runs():
+            marker = ">> " if run_id == self.store.current_run_id else "   "
+            print(f"  {marker}{run_id}")
 
         print(
-            "\nKeys: F1-F7 stage | F8 phase | F9/F10 run | "
+            "\nKeys: F1/F2 stage | F3/F4 phase | F5/F6 run | "
             "S info | I component | SPACE/click ROI"
         )
         print(
@@ -308,51 +312,63 @@ class CNMFDebugStageViewer:
     # Key bindings
     # ------------------------------------------------------------------
     def _bind_keys(self) -> None:
-        # F1-F7 each bind to a function that resolves the stage AT KEYPRESS TIME.
-        # This lets the mapping re-target whenever the user switches phase or run
-        # (since list(self.store) changes accordingly).
-        for i, fkey in enumerate(['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7']):
-            @self.viewer.bind_key(fkey, overwrite=True)
-            def _switch_by_index(viewer, _idx=i, _key=fkey):
-                stages_now = list(self.store)
-                if _idx >= len(stages_now):
-                    log.info("%s: no stage at index %d (current phase has %d stages)",
-                             _key, _idx, len(stages_now))
-                    return
-                target = stages_now[_idx]
-                self.switch_stage(target)
-
-        # F8 toggle phase (fit <-> refit)
-        @self.viewer.bind_key('F8', overwrite=True)
-        def _toggle_phase(viewer):
-            other = self.store.other_phase()
-            if other is None:
-                log.info("Only one phase available in this run; nothing to toggle.")
+        # F1 / F2: previous / next stage (circular within current phase)
+        @self.viewer.bind_key('F1', overwrite=True)
+        def _prev_stage(viewer):
+            target = self.store.previous_stage()
+            if target is None:
+                log.info("No stages in current phase.")
                 return
-            if self.store.switch_phase(other):
-                log.info("Switched to phase: %s", other)
+            self.switch_stage(target)
+
+        @self.viewer.bind_key('F2', overwrite=True)
+        def _next_stage(viewer):
+            target = self.store.next_stage()
+            if target is None:
+                log.info("No stages in current phase.")
+                return
+            self.switch_stage(target)
+
+        # F3 / F4: previous / next phase (circular within current run)
+        @self.viewer.bind_key('F3', overwrite=True)
+        def _prev_phase(viewer):
+            target = self.store.previous_phase()
+            if target is None:
+                log.info("No phases available.")
+                return
+            if self.store.switch_phase(target):
+                log.info("Switched to phase: %s", target)
                 self._reload_current()
 
-        # F9 previous run
-        @self.viewer.bind_key('F9', overwrite=True)
+        @self.viewer.bind_key('F4', overwrite=True)
+        def _next_phase(viewer):
+            target = self.store.next_phase()
+            if target is None:
+                log.info("No phases available.")
+                return
+            if self.store.switch_phase(target):
+                log.info("Switched to phase: %s", target)
+                self._reload_current()
+
+        # F5 / F6: previous / next run (circular)
+        @self.viewer.bind_key('F5', overwrite=True)
         def _prev_run(viewer):
-            prev = self.store.previous_run()
-            if prev is None:
-                log.info("Already at the oldest run.")
+            target = self.store.previous_run()
+            if target is None:
+                log.info("No runs available.")
                 return
-            if self.store.switch_run(prev):
-                log.info("Switched to run: %s", prev)
+            if self.store.switch_run(target):
+                log.info("Switched to run: %s", target)
                 self._reload_current()
 
-        # F10 next run
-        @self.viewer.bind_key('F10', overwrite=True)
+        @self.viewer.bind_key('F6', overwrite=True)
         def _next_run(viewer):
-            nxt = self.store.next_run()
-            if nxt is None:
-                log.info("Already at the newest run.")
+            target = self.store.next_run()
+            if target is None:
+                log.info("No runs available.")
                 return
-            if self.store.switch_run(nxt):
-                log.info("Switched to run: %s", nxt)
+            if self.store.switch_run(target):
+                log.info("Switched to run: %s", target)
                 self._reload_current()
 
         # Existing info / interaction keys (unchanged):

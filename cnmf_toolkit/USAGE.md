@@ -80,28 +80,23 @@ OUTPUT FILES (auto-created)
 
 NAPARI VIEWER KEY BINDINGS
 --------------------------
-  STAGE SELECTION (F1-F7 bind dynamically to the Nth stage in the
-                   CURRENT phase's pipeline order; the same key always
-                   means "next thing in the pipeline" regardless of
-                   which stages were emitted)
-    Example for the notebook's REFIT phase (non-patches):
-      F1   preprocess    F2   init           F3   spatial_1
-      F4   temporal_1    F5   merge          F6   spatial_2
-      F7   temporal_2 / final (depending on stages present)
-    Example for the notebook's FIT phase (patches mode):
-      F1   patches_init  F2   patches_merge  F3   patches_temporal
-      F4   final
-    If a phase has fewer stages, the unused F-keys log "no stage at
-    index N" and do nothing.
+  Navigation is paired prev/next, ordered finest-to-coarsest scope:
 
-  PHASE / RUN NAVIGATION
-    F8   toggle phase (fit ↔ refit) — useful for inspecting the lab's
-         refinement step in the notebook
-    F9   previous run — walk back through prior CNMF invocations
-    F10  next run     — walk forward to a newer CNMF invocation
+    F1   previous stage    (circular within current phase)
+    F2   next stage        (circular within current phase)
+    F3   previous phase    (circular within current run; toggles fit ↔ refit
+                            when both exist)
+    F4   next phase        (same — wraps with prev when only 2 phases)
+    F5   previous run      (circular)
+    F6   next run          (circular)
+
+  At boundaries, navigation WRAPS — pressing F2 at the last stage takes
+  you back to the first. Title bar always shows current run + phase +
+  stage so wraparound is unambiguous.
 
   INFO & INTERACTION
-    S         print stage info to terminal
+    S         print stage info to terminal (with "you are here" maps
+              of stages, phases, and runs — useful for orientation)
     I         print component info to terminal
     SPACE     analyze the ROI under the cursor
     click     same as SPACE (mouse interaction)
@@ -109,9 +104,9 @@ NAPARI VIEWER KEY BINDINGS
   NOTES
     - F-keys chosen because napari has no built-in shortcuts on them
       (digits 1 and 2 are intercepted by napari's layer-mode shortcuts).
-    - Title bar always shows: Run <ts> | Phase <name> | <stage>
-    - Multiple runs accumulate — each CNMF invocation creates a new
-      run_<ts>/ folder. F9/F10 walks between them.
+    - Stage navigation adapts to the algorithm's actual output: phases
+      from the patches-mode fit have ~4 stages, no-patches phases have
+      7-8 stages. The same F1/F2 walks through whatever is there.
 
 
 IF THE COMPUTER CRASHES / FREEZES
