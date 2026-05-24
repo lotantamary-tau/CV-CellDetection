@@ -78,10 +78,11 @@ class CNMFDebugStageViewer:
     def _load_original_movie(self) -> None:
         """Try to load the original movie using the most recent config."""
         try:
-            # New layout: cnmf_results is a sibling of debug_outputs under data/results/
+            # Primary: hdf5/ as a sibling of debug_outputs/ under data/results/
             results_path = Path(self.debug_dir).parent / 'hdf5'
             if not results_path.exists():
-                # Fallback for legacy layouts: try old cnmf_results location relative to script
+                # Fallback: compute the canonical data/results/hdf5/ path from
+                # this script's location (handles non-default debug_dir setups).
                 results_path = Path(__file__).resolve().parents[2] / 'data' / 'results' / 'hdf5'
             if not results_path.exists():
                 results_path = Path('cnmf_results')  # last-ditch CWD-relative fallback
