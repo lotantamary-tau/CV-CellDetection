@@ -262,8 +262,17 @@ class CNMFDebugStageViewer:
         info = entry.info
         matrices = self._matrices
 
+        # Dynamic F-key label: compute from the stage's index in the current
+        # phase's pipeline order, since the keymap is dynamic now.
+        stages_now = list(self.store)
+        try:
+            idx = stages_now.index(self.current_stage)
+            key_label = f"F{idx + 1}" if idx < 7 else "(no key)"
+        except ValueError:
+            key_label = "?"
+
         print(f"\n{'=' * 60}")
-        print(f"STAGE: {info['name'].upper()}  (key {info['key']})")
+        print(f"STAGE: {info['name'].upper()}  (key {key_label})")
         print(f"{'=' * 60}")
         print(f"Components : {get_n_components(matrices)}")
         print(f"Frames     : {get_n_frames(matrices)}")
@@ -279,11 +288,12 @@ class CNMFDebugStageViewer:
                 print(f"  {k}: {v}")
 
         print("\nAvailable stages:")
-        for sname, sentry in self.store.items():
+        for i, (sname, sentry) in enumerate(self.store.items()):
             marker = ">> " if sname == self.current_stage else "   "
             loaded = "(loaded)" if sentry.is_loaded else ""
+            key_label = f"F{i + 1}" if i < 7 else " --"
             print(
-                f"  {marker}{sentry.info['key']}: {sentry.info['name']} {loaded}"
+                f"  {marker}{key_label}: {sentry.info['name']} {loaded}"
             )
 
         print(
