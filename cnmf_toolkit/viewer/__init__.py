@@ -33,8 +33,9 @@ log = logging.getLogger("viewer")
 # folder. The viewer's stage_store does dynamic discovery: any *.npz file
 # present on disk gets catalogued, even if the stage name is not listed
 # here — unknown stages just sort last (order=999) with a default display
-# name. F1-F7 keys are bound dynamically to the Nth stage in pipeline
-# order within the current phase, not to specific stage names.
+# name. F5/F6 step through stages in pipeline order within the current
+# phase (circular), and Ctrl+1..Ctrl+9 jump directly to the Nth stage —
+# all dynamic, not tied to specific stage names.
 STAGE_DEFINITIONS = {
     # Always-present preprocess step
     'preprocess':         {'order': 0,  'name': 'Preprocess'},

@@ -2,8 +2,10 @@
 Napari-based interactive viewer for CNMF debug stages.
 
 The :class:`CNMFDebugStageViewer` loads a :class:`StageStore`, displays one
-stage at a time, and lets the user switch stages (1–8), click ROIs, and
-analyse components — all while keeping only the active stage in RAM.
+stage at a time, and lets the user navigate runs/phases/stages via F-keys
+(F1/F2 run, F3/F4 phase, F5/F6 stage; Ctrl+1..9 to jump) and analyse the
+ROI under the cursor with SPACE — all while keeping only the active stage
+in RAM.
 """
 
 from __future__ import annotations
