@@ -89,6 +89,10 @@ NAPARI VIEWER KEY BINDINGS
     F4   next phase        (same — wraps with prev when only 2 phases)
     F5   previous stage    (circular within current phase)
     F6   next stage        (circular within current phase)
+    Ctrl+1..Ctrl+9         jump directly to stage 1..9 in current phase
+                            (numbered in the terminal "Stages in this phase"
+                            map; key logs "no stage at position N" if the
+                            current phase has fewer than N stages)
 
   At boundaries, navigation WRAPS — pressing F6 at the last stage takes
   you back to the first. Title bar always shows current run + phase +
@@ -107,6 +111,13 @@ NAPARI VIEWER KEY BINDINGS
     - Stage navigation adapts to the algorithm's actual output: phases
       from the patches-mode fit have ~4 stages, no-patches phases have
       7-8 stages. The same F5/F6 walks through whatever is there.
+    - When you switch run (F1/F2) or phase (F3/F4), the viewer ALWAYS
+      resets to the "final" stage (or the last stage if there's no
+      'final'). Phase also resets to 'refit' (if present) on run switch.
+      This is intentional — consistent landing position matters more
+      than trying to preserve the previously-selected stage by name,
+      which can be ambiguous when phases have different stage sets
+      (e.g. patches_init vs preprocess).
 
 
 IF THE COMPUTER CRASHES / FREEZES

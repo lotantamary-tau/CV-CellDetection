@@ -299,17 +299,20 @@ class StageStore:
         return list(self.runs[run_id].keys())
 
     def switch_run(self, run_id: str) -> bool:
-        """Switch active run. Returns True if switch succeeded."""
+        """Switch active run. Returns True if switch succeeded.
+
+        Phase is ALWAYS reset to refit (if present), else fit, else first.
+        No preservation of the previous run's phase — consistent behavior
+        matters more than minimal surprise.
+        """
         if run_id not in self.runs:
             log.warning("switch_run: unknown run_id '%s'", run_id)
             return False
         self.current_run_id = run_id
         phases = self.runs[run_id]
-        # Try to keep current phase; fall back to refit > fit > first.
-        if self.current_phase not in phases:
-            self.current_phase = 'refit' if 'refit' in phases else (
-                'fit' if 'fit' in phases else next(iter(phases))
-            )
+        self.current_phase = 'refit' if 'refit' in phases else (
+            'fit' if 'fit' in phases else next(iter(phases))
+        )
         return True
 
     def switch_phase(self, phase_name: str) -> bool:

@@ -233,25 +233,31 @@ class CNMFDebugStageViewer:
         self.print_stage_info()
 
     def _reload_current(self) -> None:
-        """Reload the current stage after a run or phase switch.
+        """Reload after a run or phase switch.
 
-        Falls back to best_initial_stage() if the previously-selected stage
-        name doesn't exist in the newly-selected phase (e.g. switching from
-        refit to fit can move from 'spatial_1' to 'patches_init').
+        Policy B: always reset to best_initial_stage (final if present, else
+        last stage in pipeline order). DO NOT preserve previous stage name.
+
+        Also sweep-unloads every StageEntry across the whole store so the
+        "(loaded)" marker reflects exactly the currently-displayed stage
+        and stale matrices from prior visits don't sit in RAM.
         """
+        # Sweep: unload everything that's loaded across all runs/phases
+        for run_id, phases in self.store.runs.items():
+            for phase_stages in phases.values():
+                for entry in phase_stages.values():
+                    if entry.is_loaded:
+                        entry.unload()
+
         stages_now = list(self.store)
         if not stages_now:
             log.warning("_reload_current: no stages in current selection.")
             return
-        if self.current_stage not in stages_now:
-            self.current_stage = self.store.best_initial_stage()
-        else:
-            # Force unload of cached entry to pick up new files
-            try:
-                self.store.unload(self.current_stage)
-            except Exception:
-                pass
+
+        # Policy B: always reset to best_initial_stage
+        self.current_stage = self.store.best_initial_stage()
         self.store._current_stage_name = self.current_stage
+
         self.store.load(self.current_stage)
         self._display_stage()
         self.print_stage_info()
@@ -296,15 +302,15 @@ class CNMFDebugStageViewer:
             print(f"  {marker}{phase}")
 
         # Stages in the current phase
-        print("\nStages in this phase (F5=prev, F6=next):")
-        for sname, sentry in self.store.items():
+        print("\nStages in this phase (F5=prev, F6=next, Ctrl+1..9 = jump):")
+        for i, (sname, sentry) in enumerate(self.store.items(), start=1):
             marker = ">> " if sname == self.current_stage else "   "
             loaded = "(loaded)" if sentry.is_loaded else ""
-            print(f"  {marker}{sentry.info['name']} {loaded}")
+            print(f"  {marker}{i}) {sentry.info['name']} {loaded}")
 
         print(
             "\nKeys: F1/F2 run | F3/F4 phase | F5/F6 stage | "
-            "S info | I component | SPACE/click ROI"
+            "Ctrl+1..9 jump | S info | I component | SPACE/click ROI"
         )
         print(
             f"Run {self.store.current_run_id}  |  Phase {self.store.current_phase}"
@@ -375,6 +381,20 @@ class CNMFDebugStageViewer:
                 log.info("No stages in current phase.")
                 return
             self.switch_stage(target)
+
+        # Ctrl+1..Ctrl+9: direct jump to Nth stage in current phase
+        for n in range(1, 10):
+            key = f'Control-{n}'
+            @self.viewer.bind_key(key, overwrite=True)
+            def _jump_to(viewer, _n=n, _key=key):
+                stages_now = list(self.store)
+                idx = _n - 1
+                if idx >= len(stages_now):
+                    log.info("%s: no stage at position %d (current phase has %d stages)",
+                             _key, _n, len(stages_now))
+                    return
+                target = stages_now[idx]
+                self.switch_stage(target)
 
         # Existing info / interaction keys (unchanged):
         @self.viewer.bind_key('s', overwrite=True)
