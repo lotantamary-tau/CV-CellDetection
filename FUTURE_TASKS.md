@@ -26,8 +26,8 @@ refactor that closed #3 and #4. Implemented Option A (per-run subfolder):
 the tracker auto-generates a `run_id` timestamp at construction and writes
 to `data/results/debug_outputs/run_<TS>/<phase>/<stage>.npz`. Each CNMF
 invocation gets its own isolated folder — no silent overwrites between
-runs, and the viewer walks between runs with F9/F10. The per-instance
-`stage_counter` is gone; the run+phase subfolder hierarchy discriminates
+runs, and the viewer walks between runs with F1/F2. The old per-instance
+counter suffix is gone; the run+phase subfolder hierarchy discriminates
 between invocations instead.
 
 ---
@@ -35,20 +35,24 @@ between invocations instead.
 ## 3. ~~Stage-switch keys 1 & 2 collide with napari built-in shortcuts~~ — RESOLVED
 
 Resolved by the 2026-05-23 multi-run + fit/refit + dynamic keymap refactor:
-stage keys moved off digits onto F1-F7. F-keys have no napari built-in
-conflict. The mapping is also dynamic — F1 binds to the first stage in the
-current phase's pipeline order, F2 to the second, and so on — so it works
-for both the patches-based fit phase and the non-patches refit phase.
+stage navigation moved off bare digits entirely. Stages step with F5/F6
+(prev/next, circular within the current phase), and Ctrl+1..Ctrl+9 jumps
+directly to the Nth stage in the current phase. F-keys and Ctrl-digit
+combos have no napari built-in conflict, and the mapping is dynamic — it
+works for both the patches-based fit phase and the non-patches refit
+phase regardless of how many stages each emits.
 
 ---
 
 ## 4. ~~Wire the lab notebook into the debug tracker / viewer~~ — RESOLVED
 
 Resolved by the same 2026-05-23 refactor: notebook has `DEBUG_FIT` and
-`DEBUG_REFIT` boolean toggles at the top; the tracker is phase-aware
-(writes to `run_<ts>/fit/` or `/refit/`); the viewer can walk between runs
-(F9/F10) and toggle phase (F8). The viewer's stage discovery is dynamic so
-it handles patches and non-patches stage sets seamlessly.
+`DEBUG_REFIT` boolean toggles at the top (both default `False` — toolkit
+stays out of the way unless explicitly enabled); the tracker is phase-aware
+(writes to `run_<ts>/fit/` or `/refit/`); the viewer walks between runs
+with F1/F2 and toggles phases (fit ↔ refit) with F3/F4. The viewer's
+stage discovery is dynamic so it handles patches and non-patches stage
+sets seamlessly.
 
 ---
 
