@@ -80,17 +80,17 @@ OUTPUT FILES (auto-created)
 
 NAPARI VIEWER KEY BINDINGS
 --------------------------
-  Navigation is paired prev/next, ordered finest-to-coarsest scope:
+  Navigation is paired prev/next, ordered coarse-to-fine scope:
 
-    F1   previous stage    (circular within current phase)
-    F2   next stage        (circular within current phase)
+    F1   previous run      (circular)
+    F2   next run          (circular)
     F3   previous phase    (circular within current run; toggles fit ↔ refit
                             when both exist)
     F4   next phase        (same — wraps with prev when only 2 phases)
-    F5   previous run      (circular)
-    F6   next run          (circular)
+    F5   previous stage    (circular within current phase)
+    F6   next stage        (circular within current phase)
 
-  At boundaries, navigation WRAPS — pressing F2 at the last stage takes
+  At boundaries, navigation WRAPS — pressing F6 at the last stage takes
   you back to the first. Title bar always shows current run + phase +
   stage so wraparound is unambiguous.
 
@@ -106,7 +106,7 @@ NAPARI VIEWER KEY BINDINGS
       (digits 1 and 2 are intercepted by napari's layer-mode shortcuts).
     - Stage navigation adapts to the algorithm's actual output: phases
       from the patches-mode fit have ~4 stages, no-patches phases have
-      7-8 stages. The same F1/F2 walks through whatever is there.
+      7-8 stages. The same F5/F6 walks through whatever is there.
 
 
 IF THE COMPUTER CRASHES / FREEZES

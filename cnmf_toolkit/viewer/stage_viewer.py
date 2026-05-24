@@ -281,27 +281,29 @@ class CNMFDebugStageViewer:
             for k, v in meta.items():
                 print(f"  {k}: {v}")
 
-        # Stages in current phase
-        print("\nStages in this phase (F1=prev, F2=next):")
-        for sname, sentry in self.store.items():
-            marker = ">> " if sname == self.current_stage else "   "
-            loaded = "(loaded)" if sentry.is_loaded else ""
-            print(f"  {marker}{sentry.info['name']} {loaded}")
+        # Coarse-to-fine "you are here" map: runs -> phases -> stages.
 
-        # Phases in current run
+        # All runs
+        print("\nRuns (F1=prev, F2=next):")
+        for run_id in self.store.available_runs():
+            marker = ">> " if run_id == self.store.current_run_id else "   "
+            print(f"  {marker}{run_id}")
+
+        # Phases in the current run
         print("\nPhases in this run (F3=prev, F4=next):")
         for phase in self.store.available_phases():
             marker = ">> " if phase == self.store.current_phase else "   "
             print(f"  {marker}{phase}")
 
-        # Runs (all)
-        print("\nRuns (F5=prev, F6=next):")
-        for run_id in self.store.available_runs():
-            marker = ">> " if run_id == self.store.current_run_id else "   "
-            print(f"  {marker}{run_id}")
+        # Stages in the current phase
+        print("\nStages in this phase (F5=prev, F6=next):")
+        for sname, sentry in self.store.items():
+            marker = ">> " if sname == self.current_stage else "   "
+            loaded = "(loaded)" if sentry.is_loaded else ""
+            print(f"  {marker}{sentry.info['name']} {loaded}")
 
         print(
-            "\nKeys: F1/F2 stage | F3/F4 phase | F5/F6 run | "
+            "\nKeys: F1/F2 run | F3/F4 phase | F5/F6 stage | "
             "S info | I component | SPACE/click ROI"
         )
         print(
@@ -312,22 +314,29 @@ class CNMFDebugStageViewer:
     # Key bindings
     # ------------------------------------------------------------------
     def _bind_keys(self) -> None:
-        # F1 / F2: previous / next stage (circular within current phase)
+        # Navigation is paired prev/next, ordered coarse-to-fine scope:
+        # runs (F1/F2) -> phases (F3/F4) -> stages (F5/F6). All circular.
+
+        # F1 / F2: previous / next run (circular)
         @self.viewer.bind_key('F1', overwrite=True)
-        def _prev_stage(viewer):
-            target = self.store.previous_stage()
+        def _prev_run(viewer):
+            target = self.store.previous_run()
             if target is None:
-                log.info("No stages in current phase.")
+                log.info("No runs available.")
                 return
-            self.switch_stage(target)
+            if self.store.switch_run(target):
+                log.info("Switched to run: %s", target)
+                self._reload_current()
 
         @self.viewer.bind_key('F2', overwrite=True)
-        def _next_stage(viewer):
-            target = self.store.next_stage()
+        def _next_run(viewer):
+            target = self.store.next_run()
             if target is None:
-                log.info("No stages in current phase.")
+                log.info("No runs available.")
                 return
-            self.switch_stage(target)
+            if self.store.switch_run(target):
+                log.info("Switched to run: %s", target)
+                self._reload_current()
 
         # F3 / F4: previous / next phase (circular within current run)
         @self.viewer.bind_key('F3', overwrite=True)
@@ -350,26 +359,22 @@ class CNMFDebugStageViewer:
                 log.info("Switched to phase: %s", target)
                 self._reload_current()
 
-        # F5 / F6: previous / next run (circular)
+        # F5 / F6: previous / next stage (circular within current phase)
         @self.viewer.bind_key('F5', overwrite=True)
-        def _prev_run(viewer):
-            target = self.store.previous_run()
+        def _prev_stage(viewer):
+            target = self.store.previous_stage()
             if target is None:
-                log.info("No runs available.")
+                log.info("No stages in current phase.")
                 return
-            if self.store.switch_run(target):
-                log.info("Switched to run: %s", target)
-                self._reload_current()
+            self.switch_stage(target)
 
         @self.viewer.bind_key('F6', overwrite=True)
-        def _next_run(viewer):
-            target = self.store.next_run()
+        def _next_stage(viewer):
+            target = self.store.next_stage()
             if target is None:
-                log.info("No runs available.")
+                log.info("No stages in current phase.")
                 return
-            if self.store.switch_run(target):
-                log.info("Switched to run: %s", target)
-                self._reload_current()
+            self.switch_stage(target)
 
         # Existing info / interaction keys (unchanged):
         @self.viewer.bind_key('s', overwrite=True)
