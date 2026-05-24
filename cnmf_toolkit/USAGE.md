@@ -159,9 +159,15 @@ ADDING A CUSTOM DEBUG STAGE
 If you want to save your own stage (e.g. after custom filtering or manual
 corrections) and view it in the napari viewer, follow these steps:
 
-  1. Define your new stage in viewer/__init__.py (STAGE_DEFINITIONS dict):
+  1. (Optional) Define a display entry in viewer/__init__.py
+     (STAGE_DEFINITIONS dict) so the stage gets a friendly name and lands
+     in a specific pipeline-order slot in the viewer's stage list:
 
-       'my_stage': {'order': 9, 'name': 'My Custom Stage', 'key': '9'},
+       'my_stage': {'order': 9, 'name': 'My Custom Stage'},
+
+     This step is optional — if you skip it, the viewer's stage_store
+     still discovers the stage on disk and shows it (with the bare
+     stage name and order=999 so it sorts last).
 
   2. Save the stage using CNMFDebugTracker from a Python script or REPL:
 
@@ -187,23 +193,25 @@ corrections) and view it in the napari viewer, follow these steps:
        my_stage_A.npz       Sparse A matrix (if A was sparse)
        metadata_my_stage.txt
 
-  3. No manual key-binding step is needed — F1-F7 bind dynamically to
-     the stages present in the current phase's pipeline order. As long
-     as your stage name appears in STAGE_DEFINITIONS, the viewer slots
-     it into the keymap automatically based on its 'order' value.
+  3. No manual key-binding step is needed. F5/F6 walk through whatever
+     stages are present in the current phase; Ctrl+1..9 jumps directly
+     to the Nth stage. If you added a STAGE_DEFINITIONS entry in step 1,
+     your stage slots into the pipeline-order based on its 'order' value.
+     If you didn't, it sorts last (order=999) with the bare stage name.
 
   4. Launch the viewer:
 
        python cnmf_viewer.py
 
-     The F-key that activates your stage depends on how many earlier
-     stages (lower 'order') are present in the same phase.
+     The "Stages in this phase" list in the terminal shows the position
+     number, so you'll see which Ctrl+N jumps to your custom stage.
 
   Note: The viewer expects stage files to follow the naming convention
   {stage_name}.npz for dense arrays and {stage_name}_{key}.npz for
   sparse matrices (e.g. A), inside a run_<TS>/<phase>/ subfolder. The
   StageStore scans ../data/results/debug_outputs/ hierarchically and
-  picks up any stage whose name matches an entry in STAGE_DEFINITIONS.
+  picks up any stage file present on disk, regardless of whether the
+  name appears in STAGE_DEFINITIONS (dynamic discovery).
 
 
 AVAILABLE CONFIGS
