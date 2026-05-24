@@ -2,8 +2,10 @@
 Napari-based interactive viewer for CNMF debug stages.
 
 The :class:`CNMFDebugStageViewer` loads a :class:`StageStore`, displays one
-stage at a time, and lets the user switch stages (1–8), click ROIs, and
-analyse components — all while keeping only the active stage in RAM.
+stage at a time, and lets the user navigate runs/phases/stages via F-keys
+(F1/F2 run, F3/F4 phase, F5/F6 stage; Ctrl+1..9 to jump) and analyse the
+ROI under the cursor with SPACE — all while keeping only the active stage
+in RAM.
 """
 
 from __future__ import annotations
@@ -51,6 +53,7 @@ class CNMFDebugStageViewer:
 
         # Pick initial stage
         self.current_stage = self.store.best_initial_stage()
+        self.store._current_stage_name = self.current_stage
         self.store.load(self.current_stage)
         log.info("Starting with stage: %s", self.current_stage)
 
@@ -207,7 +210,8 @@ class CNMFDebugStageViewer:
 
         # Update title
         self.viewer.title = (
-            f"CNMF Debug Viewer -- {self._entry.info['name']} "
+            f"CNMF Debug Viewer  |  Run {self.store.current_run_id}  |  "
+            f"Phase {self.store.current_phase}  |  {self._entry.info['name']} "
             f"({n_components} components)"
         )
 
@@ -224,8 +228,39 @@ class CNMFDebugStageViewer:
 
         self.store.unload(self.current_stage)
         self.current_stage = stage_name
+        self.store._current_stage_name = stage_name
         self.store.load(self.current_stage)
 
+        self._display_stage()
+        self.print_stage_info()
+
+    def _reload_current(self) -> None:
+        """Reload after a run or phase switch.
+
+        Policy B: always reset to best_initial_stage (final if present, else
+        last stage in pipeline order). DO NOT preserve previous stage name.
+
+        Also sweep-unloads every StageEntry across the whole store so the
+        "(loaded)" marker reflects exactly the currently-displayed stage
+        and stale matrices from prior visits don't sit in RAM.
+        """
+        # Sweep: unload everything that's loaded across all runs/phases
+        for run_id, phases in self.store.runs.items():
+            for phase_stages in phases.values():
+                for entry in phase_stages.values():
+                    if entry.is_loaded:
+                        entry.unload()
+
+        stages_now = list(self.store)
+        if not stages_now:
+            log.warning("_reload_current: no stages in current selection.")
+            return
+
+        # Policy B: always reset to best_initial_stage
+        self.current_stage = self.store.best_initial_stage()
+        self.store._current_stage_name = self.current_stage
+
+        self.store.load(self.current_stage)
         self._display_stage()
         self.print_stage_info()
 
@@ -239,7 +274,7 @@ class CNMFDebugStageViewer:
         matrices = self._matrices
 
         print(f"\n{'=' * 60}")
-        print(f"STAGE: {info['name'].upper()}  (key {info['key']})")
+        print(f"STAGE: {info['name'].upper()}")
         print(f"{'=' * 60}")
         print(f"Components : {get_n_components(matrices)}")
         print(f"Frames     : {get_n_frames(matrices)}")
@@ -254,34 +289,116 @@ class CNMFDebugStageViewer:
             for k, v in meta.items():
                 print(f"  {k}: {v}")
 
-        print("\nAvailable stages:")
-        for sname, sentry in self.store.items():
+        # Coarse-to-fine "you are here" map: runs -> phases -> stages.
+
+        # All runs
+        print("\nRuns (F1=prev, F2=next):")
+        for run_id in self.store.available_runs():
+            marker = ">> " if run_id == self.store.current_run_id else "   "
+            print(f"  {marker}{run_id}")
+
+        # Phases in the current run
+        print("\nPhases in this run (F3=prev, F4=next):")
+        for phase in self.store.available_phases():
+            marker = ">> " if phase == self.store.current_phase else "   "
+            print(f"  {marker}{phase}")
+
+        # Stages in the current phase
+        print("\nStages in this phase (F5=prev, F6=next, Ctrl+1..9 = jump):")
+        for i, (sname, sentry) in enumerate(self.store.items(), start=1):
             marker = ">> " if sname == self.current_stage else "   "
             loaded = "(loaded)" if sentry.is_loaded else ""
-            print(
-                f"  {marker}{sentry.info['key']}: {sentry.info['name']} {loaded}"
-            )
+            print(f"  {marker}{i}) {sentry.info['name']} {loaded}")
 
         print(
-            "\nKeys: 1-8 stages | S info "
-            "| I component | SPACE/click ROI"
+            "\nKeys: F1/F2 run | F3/F4 phase | F5/F6 stage | "
+            "Ctrl+1..9 jump | S info | I component | SPACE = analyze ROI"
+        )
+        print(
+            f"Run {self.store.current_run_id}  |  Phase {self.store.current_phase}"
         )
 
     # ------------------------------------------------------------------
     # Key bindings
     # ------------------------------------------------------------------
     def _bind_keys(self) -> None:
-        stage_keys = {
-            '1': 'init',      '2': 'spatial_1',  '3': 'temporal_1',
-            '4': 'merge',     '5': 'spatial_2',  '6': 'temporal_2',
-            '7': 'final',     '8': 'cnn',
-        }
+        # Navigation is paired prev/next, ordered coarse-to-fine scope:
+        # runs (F1/F2) -> phases (F3/F4) -> stages (F5/F6). All circular.
 
-        for key, sname in stage_keys.items():
+        # F1 / F2: previous / next run (circular)
+        @self.viewer.bind_key('F1', overwrite=True)
+        def _prev_run(viewer):
+            target = self.store.previous_run()
+            if target is None:
+                log.info("No runs available.")
+                return
+            if self.store.switch_run(target):
+                log.info("Switched to run: %s", target)
+                self._reload_current()
+
+        @self.viewer.bind_key('F2', overwrite=True)
+        def _next_run(viewer):
+            target = self.store.next_run()
+            if target is None:
+                log.info("No runs available.")
+                return
+            if self.store.switch_run(target):
+                log.info("Switched to run: %s", target)
+                self._reload_current()
+
+        # F3 / F4: previous / next phase (circular within current run)
+        @self.viewer.bind_key('F3', overwrite=True)
+        def _prev_phase(viewer):
+            target = self.store.previous_phase()
+            if target is None:
+                log.info("No phases available.")
+                return
+            if self.store.switch_phase(target):
+                log.info("Switched to phase: %s", target)
+                self._reload_current()
+
+        @self.viewer.bind_key('F4', overwrite=True)
+        def _next_phase(viewer):
+            target = self.store.next_phase()
+            if target is None:
+                log.info("No phases available.")
+                return
+            if self.store.switch_phase(target):
+                log.info("Switched to phase: %s", target)
+                self._reload_current()
+
+        # F5 / F6: previous / next stage (circular within current phase)
+        @self.viewer.bind_key('F5', overwrite=True)
+        def _prev_stage(viewer):
+            target = self.store.previous_stage()
+            if target is None:
+                log.info("No stages in current phase.")
+                return
+            self.switch_stage(target)
+
+        @self.viewer.bind_key('F6', overwrite=True)
+        def _next_stage(viewer):
+            target = self.store.next_stage()
+            if target is None:
+                log.info("No stages in current phase.")
+                return
+            self.switch_stage(target)
+
+        # Ctrl+1..Ctrl+9: direct jump to Nth stage in current phase
+        for n in range(1, 10):
+            key = f'Control-{n}'
             @self.viewer.bind_key(key, overwrite=True)
-            def _switch(viewer, _sn=sname):
-                self.switch_stage(_sn)
+            def _jump_to(viewer, _n=n, _key=key):
+                stages_now = list(self.store)
+                idx = _n - 1
+                if idx >= len(stages_now):
+                    log.info("%s: no stage at position %d (current phase has %d stages)",
+                             _key, _n, len(stages_now))
+                    return
+                target = stages_now[idx]
+                self.switch_stage(target)
 
+        # Existing info / interaction keys (unchanged):
         @self.viewer.bind_key('s', overwrite=True)
         def _info(viewer):
             self.print_stage_info()

@@ -18,7 +18,7 @@ CV-CellDetection is a lab-internal toolkit for adapting [CaImAn](https://github.
 |---|---|
 | [cnmf_toolkit/](cnmf_toolkit/) | Forked CaImAn CNMF instrumented with debug hooks. The instrumentation layer that breaks CNMF into inspectable stages. |
 | [cnmf_toolkit/instrumented_cnmf.py](cnmf_toolkit/instrumented_cnmf.py) | Main `CNMF` class — fork of upstream `caiman.source_extraction.cnmf.cnmf`, modified only to call `CNMFDebugTracker` between stages. |
-| [cnmf_toolkit/debug_tracker.py:15](cnmf_toolkit/debug_tracker.py#L15) | `CNMFDebugTracker` — saves matrices (A, C, S, b, f, YrA), ROI PNGs, and metadata for each stage. |
+| [cnmf_toolkit/debug_tracker.py:15](cnmf_toolkit/debug_tracker.py#L15) | `CNMFDebugTracker` — saves matrices (A, C, S, b, f, YrA), ROI PNGs, and metadata for each stage. Auto-generates a `run_id` timestamp at construction; phase-aware via `set_phase('fit'\|'refit')` so each CNMF invocation writes to its own `run_<ts>/<phase>/` subfolder. |
 | [cnmf_toolkit/cnmf_manager.py](cnmf_toolkit/cnmf_manager.py) | `CNMFManager` — runs CNMF with named parameter configs (e.g. `greedy_roi_no_patches_config`, `corr_pnr_no_patches_config`). |
 | [cnmf_toolkit/cnmf_runner.py](cnmf_toolkit/cnmf_runner.py) | CLI entry point for a single CNMF run. |
 | [cnmf_toolkit/cnmf_viewer.py](cnmf_toolkit/cnmf_viewer.py) | Launches the napari stage-by-stage viewer. |
@@ -42,8 +42,9 @@ conda activate cv-celldetection
 # Install CaImAn sample data (one time, optional)
 caimanmanager install
 
-# Run CNMF on a movie (writes per-stage debug data to data/results/debug_outputs/
-# and final HDF5 to data/results/hdf5/)
+# Run CNMF on a movie. Writes per-stage debug data to
+# data/results/debug_outputs/run_<TS>/fit/ (and refit/ from the notebook),
+# and the final HDF5 to data/results/hdf5/.
 cd cnmf_toolkit
 python cnmf_runner.py path/to/movie.tif --config greedy_roi_no_patches_config
 
@@ -59,7 +60,7 @@ No automated test suite exists yet. Validation is currently visual via the napar
 
 **Patterns used:**
 - **Forked-with-hooks:** [instrumented_cnmf.py](cnmf_toolkit/instrumented_cnmf.py) is a near-verbatim copy of upstream CaImAn CNMF; debug calls are inserted between stages but the algorithm logic is unchanged.
-- **Staged debug capture:** `CNMFDebugTracker.save_stage(name, ...)` writes `{stage}_0.npz` + `{stage}_0_A.npz` (sparse) + `metadata_{stage}_0.txt` per pipeline step.
+- **Staged debug capture:** `CNMFDebugTracker` writes per-stage snapshots to `data/results/debug_outputs/run_<TS>/<phase>/` where `<TS>` is auto-generated at construction and `<phase>` is `fit` or `refit`. Files: `{stage}.npz` (dense), `{stage}_A.npz` (sparse spatial), `metadata_{stage}.txt`. No counter suffix — the run/phase subfolder hierarchy discriminates between invocations. Set `set_phase('refit')` / `enable()` / `disable()` to control snapshot writing per phase (the notebook uses this for `DEBUG_FIT` / `DEBUG_REFIT` toggles; the runner inherits default `'fit'`).
 - **Named-config runner:** `CNMFManager` exposes runs by config name rather than ad-hoc kwargs.
 - **Lazy imports:** see [cnmf_toolkit/__init__.py:21](cnmf_toolkit/__init__.py#L21) — `__getattr__` defers `CNMFManager` import to avoid circular imports.
 

@@ -1,20 +1,27 @@
-"""
-Lazy-loading stage catalogue for CNMF debug outputs.
+"""Lazy-loading stage catalogue for CNMF debug outputs (multi-run hierarchy).
 
-The ``StageStore`` class scans a directory for stage files at init time but
-does **not** load any matrix data until explicitly asked.  This keeps startup
-fast and memory bounded regardless of how many stages exist on disk.
+The ``StageStore`` class scans a base directory that contains one or more
+``run_<id>/<phase>/`` subfolders, each holding stage files:
 
-File-format contract (matches :class:`CNMFDebugTracker`):
-    Dense arrays  → ``{stage}_{count}.npz``  (numpy compressed archive,
-                     multiple keys like C, S, YrA, b, f, …)
-    Sparse arrays → ``{stage}_{count}_{key}.npz``  (scipy.sparse format,
-                     one matrix per file — typically A)
-    Metadata      → ``metadata_{stage}_{count}.txt``
+    <stage>.npz                  Dense matrices for that stage
+    <stage>_<sparse_key>.npz     Sparse matrices (e.g. {stage}_A.npz)
+    metadata_<stage>.txt         Shape/size info
+
+The set of stages present depends on which CNMF configuration ran (e.g. the
+notebook's patches-based fit produces ``patches_init``, ``patches_merge``,
+``patches_temporal``, ``final`` while the runner's no-patches config produces
+``preprocess``, ``init``, ``spatial_1``, ..., ``final``). ``STAGE_DEFINITIONS``
+in ``viewer/__init__.py`` is treated as **optional metadata** (nice display
+names, canonical pipeline order). Any stage file present on disk gets
+catalogued, even if not listed in ``STAGE_DEFINITIONS``.
+
+The store tracks a "current run" and "current phase" so the viewer can
+navigate between runs and phases (fit vs refit) without re-scanning the disk.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -42,7 +49,7 @@ class StageEntry:
     ):
         self.name = name
         self.info = info
-        self.npz_path = npz_path              # dense bundle ({stage}_0.npz)
+        self.npz_path = npz_path              # dense bundle ({stage}.npz)
         self.sparse_paths = sparse_paths      # per-key sparse files
         self.metadata_path = metadata_path
         self.matrices: Optional[dict] = None
@@ -77,7 +84,7 @@ class StageEntry:
         """
         if self.is_loaded:
             return
-        log.info("Loading matrices for stage: %s …", self.info['name'])
+        log.info("Loading matrices for stage: %s …", self.info.get('name', self.name))
         self.matrices = {}
 
         # 1. Dense bundle — extract every array from the npz archive
@@ -108,114 +115,321 @@ class StageEntry:
     def unload(self) -> None:
         """Release matrix data to free memory."""
         if self.is_loaded:
-            log.debug("Unloading stage: %s", self.info['name'])
+            log.debug("Unloading stage: %s", self.info.get('name', self.name))
             self.matrices = None
             self.metadata = None
 
 
+# Module-level helper for stage ordering when STAGE_DEFINITIONS doesn't include
+# a stage. Used by _ordered_stages().
+def _stage_sort_key(name: str, info: Dict) -> tuple:
+    """Sort key: known stages by their declared 'order'; unknown stages alphabetically after known ones."""
+    if 'order' in info:
+        return (0, info['order'])
+    return (1, name)
+
+
 class StageStore:
-    """
-    Manages a catalogue of CNMF debug stage files.
+    """Manages a catalogue of CNMF debug stage files across runs and phases."""
 
-    Scans the directory once and provides load/unload per stage so that
-    only one stage needs to reside in memory at a time.
-    """
-
-    def __init__(self, debug_dir: str):
+    def __init__(self, debug_dir):
         self.debug_dir = Path(debug_dir)
-        self.stages: Dict[str, StageEntry] = {}
+        # Map: run_id -> {phase_name: {stage_name: StageEntry}}
+        self.runs: Dict[str, Dict[str, Dict[str, StageEntry]]] = {}
+        self.current_run_id: Optional[str] = None
+        self.current_phase: Optional[str] = None
         self._scan()
+        self._init_current()
+
+    def _scan(self) -> None:
+        """Walk debug_dir/run_*/<phase>/<stage>.npz and build the catalogue.
+
+        Dynamically discovers any stage name present on disk (not limited to
+        STAGE_DEFINITIONS). Empty phases / empty runs are skipped.
+        """
+        if not self.debug_dir.exists():
+            log.warning("debug_dir does not exist: %s", self.debug_dir)
+            return
+
+        run_re = re.compile(r"^run_(\d{8}_\d{6})$")
+        for run_path in sorted(self.debug_dir.iterdir()):
+            if not run_path.is_dir():
+                continue
+            m = run_re.match(run_path.name)
+            if not m:
+                continue
+            run_id = m.group(1)
+
+            phases: Dict[str, Dict[str, StageEntry]] = {}
+            for phase_path in sorted(run_path.iterdir()):
+                if not phase_path.is_dir():
+                    continue
+                phase_name = phase_path.name  # 'fit' or 'refit'
+
+                stages: Dict[str, StageEntry] = {}
+                # Find every <stage>.npz file (excluding sparse <stage>_<key>.npz)
+                for npz_path in sorted(phase_path.glob("*.npz")):
+                    stem = npz_path.stem
+                    # Sparse files look like {stage}_{key}.npz. We need the
+                    # main dense file which is {stage}.npz. Check whether
+                    # stem contains an underscore-suffix that matches a
+                    # known matrix-key shape — but simpler: a {stage}.npz
+                    # exists only if there's NO corresponding stage-without-
+                    # this-suffix file. The cleanest discrimination is to
+                    # look for the metadata_<stage>.txt — that confirms it's
+                    # a real stage entry (since metadata only exists per
+                    # stage, not per sparse-key).
+                    if not (phase_path / f"metadata_{stem}.txt").exists():
+                        continue
+                    stage_name = stem
+
+                    info = STAGE_DEFINITIONS.get(stage_name, {
+                        'name': stage_name.replace('_', ' ').title(),
+                        'order': 999,  # unknown stages sort last
+                    })
+
+                    # Sparse matrices: {stage}_{key}.npz
+                    sparse_paths: Dict[str, Path] = {}
+                    for spath in phase_path.glob(f"{stage_name}_*.npz"):
+                        suffix = spath.stem[len(stage_name) + 1:]
+                        if suffix:
+                            sparse_paths[suffix] = spath
+
+                    metadata_path = phase_path / f"metadata_{stage_name}.txt"
+
+                    stages[stage_name] = StageEntry(
+                        name=stage_name,
+                        info=info,
+                        npz_path=npz_path,
+                        sparse_paths=sparse_paths,
+                        metadata_path=metadata_path,
+                    )
+                    log.info(
+                        "Found run=%s phase=%s stage=%s",
+                        run_id, phase_name, stage_name,
+                    )
+
+                if stages:
+                    phases[phase_name] = stages
+            if phases:
+                self.runs[run_id] = phases
+
+        log.info("Scanned %d run(s) in %s", len(self.runs), self.debug_dir)
+
+    def _init_current(self) -> None:
+        """Pick the default (most recent run, prefer refit phase)."""
+        if not self.runs:
+            return
+        # Most recent run by timestamp (the IDs sort lexicographically by date)
+        self.current_run_id = sorted(self.runs.keys())[-1]
+        phases = self.runs[self.current_run_id]
+        self.current_phase = 'refit' if 'refit' in phases else (
+            'fit' if 'fit' in phases else next(iter(phases))
+        )
 
     # ------------------------------------------------------------------
-    # Public API
+    # Public API — operates on the CURRENT run+phase
     # ------------------------------------------------------------------
+    def _current_stages(self) -> Dict[str, "StageEntry"]:
+        """Return the stages dict for the active run+phase, or empty."""
+        if self.current_run_id is None or self.current_phase is None:
+            return {}
+        return self.runs.get(self.current_run_id, {}).get(self.current_phase, {})
+
     def __contains__(self, name: str) -> bool:
-        return name in self.stages
+        return name in self._current_stages()
 
-    def __getitem__(self, name: str) -> StageEntry:
-        return self.stages[name]
+    def __getitem__(self, name: str) -> "StageEntry":
+        return self._current_stages()[name]
 
     def __len__(self) -> int:
-        return len(self.stages)
+        return len(self._current_stages())
 
     def __bool__(self) -> bool:
-        return len(self.stages) > 0
+        return len(self._current_stages()) > 0
 
     def __iter__(self):
-        """Iterate stage names in pipeline order."""
+        """Iterate stage names of the CURRENT run+phase in pipeline order.
+
+        Stages with a declared 'order' in STAGE_DEFINITIONS sort first by that
+        order. Unknown stages sort after, alphabetically.
+        """
+        stages = self._current_stages()
         return iter(
-            sorted(self.stages, key=lambda s: self.stages[s].info['order'])
+            sorted(stages, key=lambda s: _stage_sort_key(s, stages[s].info))
         )
 
     def items(self):
-        for name in self:
-            yield name, self.stages[name]
+        """Iterate (stage_name, StageEntry) tuples in pipeline order."""
+        stages = self._current_stages()
+        for name in iter(self):
+            yield name, stages[name]
 
     def best_initial_stage(self) -> str:
-        """Return 'final' if available, otherwise the highest-order stage."""
-        if 'final' in self.stages:
+        """Return 'final' if available in current selection, else last stage in order."""
+        stages = self._current_stages()
+        if not stages:
+            raise RuntimeError("No stages available in current selection.")
+        if 'final' in stages:
             return 'final'
-        return max(self.stages, key=lambda s: self.stages[s].info['order'])
+        # Last stage in pipeline order
+        return list(self)[-1]
 
-    def load(self, name: str) -> StageEntry:
-        entry = self.stages[name]
+    def load(self, name: str) -> None:
+        entry = self._current_stages()[name]
         entry.load()
-        return entry
 
     def unload(self, name: str) -> None:
-        self.stages[name].unload()
+        stages = self._current_stages()
+        if name in stages:
+            stages[name].unload()
 
     # ------------------------------------------------------------------
-    # Scanning
+    # Run / phase navigation (used by the viewer's keybindings)
     # ------------------------------------------------------------------
-    def _scan(self) -> None:
-        if not self.debug_dir.exists():
-            log.error("Debug directory not found: %s", self.debug_dir)
-            return
+    def available_runs(self) -> list:
+        """Sorted list of run_ids, oldest first."""
+        return sorted(self.runs.keys())
 
-        for stage_name, info in STAGE_DEFINITIONS.items():
-            # The dense bundle created by CNMFDebugTracker
-            npz_path = self.debug_dir / f"{stage_name}_0.npz"
-            if not npz_path.exists():
-                if stage_name == 'cnn':
-                    log.info("CNN stage not found (optional)")
-                else:
-                    log.warning("Stage file missing: %s", npz_path)
-                continue
+    def available_phases(self, run_id: Optional[str] = None) -> list:
+        """List of phase names present in the given (or current) run."""
+        run_id = run_id or self.current_run_id
+        if run_id is None or run_id not in self.runs:
+            return []
+        return list(self.runs[run_id].keys())
 
-            # Sparse matrices are saved individually as
-            # {stage}_{count}_{key}.npz  (via scipy.sparse.save_npz)
-            sparse_paths: Dict[str, Path] = {}
-            for mat_name in MATRIX_NAMES:
-                sp_path = self.debug_dir / f"{stage_name}_0_{mat_name}.npz"
-                if sp_path.exists():
-                    sparse_paths[mat_name] = sp_path
+    def switch_run(self, run_id: str) -> bool:
+        """Switch active run. Returns True if switch succeeded.
 
-            metadata_path = self.debug_dir / f"metadata_{stage_name}_0.txt"
+        Phase is ALWAYS reset to refit (if present), else fit, else first.
+        No preservation of the previous run's phase — consistent behavior
+        matters more than minimal surprise.
+        """
+        if run_id not in self.runs:
+            log.warning("switch_run: unknown run_id '%s'", run_id)
+            return False
+        self.current_run_id = run_id
+        phases = self.runs[run_id]
+        self.current_phase = 'refit' if 'refit' in phases else (
+            'fit' if 'fit' in phases else next(iter(phases))
+        )
+        return True
 
-            # Peek into the dense bundle to report which keys it contains
-            dense_keys: list[str] = []
-            try:
-                with np.load(str(npz_path), allow_pickle=True) as npz:
-                    dense_keys = list(npz.files)
-            except Exception:
-                pass
-
-            self.stages[stage_name] = StageEntry(
-                name=stage_name,
-                info=info,
-                npz_path=npz_path,
-                sparse_paths=sparse_paths,
-                metadata_path=metadata_path,
+    def switch_phase(self, phase_name: str) -> bool:
+        """Switch active phase within the current run. Returns True if it succeeded."""
+        if self.current_run_id is None:
+            return False
+        phases = self.runs[self.current_run_id]
+        if phase_name not in phases:
+            log.warning(
+                "switch_phase: phase '%s' not present in run %s",
+                phase_name, self.current_run_id,
             )
+            return False
+        self.current_phase = phase_name
+        return True
 
-            all_keys = sorted(set(dense_keys) | set(sparse_paths.keys()))
-            log.info(
-                "Found stage %-12s  matrices: %s",
-                stage_name, ', '.join(all_keys) if all_keys else '(none)',
-            )
+    def previous_run(self) -> Optional[str]:
+        """Circular: return the run_id of the run before the current one.
 
-        log.info("Scanned %d stages in %s", len(self.stages), self.debug_dir)
+        Wraps to the last run if currently at the oldest. Returns None only
+        if there are no runs at all.
+        """
+        runs = self.available_runs()
+        if not runs or self.current_run_id is None:
+            return None
+        try:
+            idx = runs.index(self.current_run_id)
+        except ValueError:
+            return None
+        return runs[idx - 1] if idx > 0 else runs[-1]
+
+    def next_run(self) -> Optional[str]:
+        """Circular: return the run_id of the run after the current one.
+
+        Wraps to the first run if currently at the newest. Returns None only
+        if there are no runs at all.
+        """
+        runs = self.available_runs()
+        if not runs or self.current_run_id is None:
+            return None
+        try:
+            idx = runs.index(self.current_run_id)
+        except ValueError:
+            return None
+        return runs[idx + 1] if idx + 1 < len(runs) else runs[0]
+
+    def previous_stage(self) -> Optional[str]:
+        """Circular: return the previous stage name in the current phase's pipeline order.
+
+        Wraps to the last stage if currently at the first. Returns None if
+        no stages are loaded.
+        """
+        stages = list(self)
+        if not stages:
+            return None
+        try:
+            idx = stages.index(self.current_stage_name())
+        except (ValueError, RuntimeError):
+            return stages[0]
+        return stages[idx - 1] if idx > 0 else stages[-1]
+
+    def next_stage(self) -> Optional[str]:
+        """Circular: return the next stage name in the current phase's pipeline order."""
+        stages = list(self)
+        if not stages:
+            return None
+        try:
+            idx = stages.index(self.current_stage_name())
+        except (ValueError, RuntimeError):
+            return stages[0]
+        return stages[idx + 1] if idx + 1 < len(stages) else stages[0]
+
+    def current_stage_name(self) -> Optional[str]:
+        """Return the name of the stage the viewer is currently displaying.
+
+        StageStore itself doesn't track the active stage (the viewer does),
+        so this is provided as an override hook. Default returns None;
+        the viewer can set ``store.current_stage_name = lambda: self.current_stage``
+        or override on a subclass. In our setup the viewer sets it via the
+        attribute ``_current_stage_name`` (set by the viewer when it switches).
+        """
+        return getattr(self, '_current_stage_name', None)
+
+    def previous_phase(self) -> Optional[str]:
+        """Circular: return the previous phase in the current run."""
+        if self.current_run_id is None:
+            return None
+        phases = list(self.runs[self.current_run_id].keys())
+        if not phases:
+            return None
+        try:
+            idx = phases.index(self.current_phase)
+        except ValueError:
+            return phases[0]
+        return phases[idx - 1] if idx > 0 else phases[-1]
+
+    def next_phase(self) -> Optional[str]:
+        """Circular: return the next phase in the current run."""
+        if self.current_run_id is None:
+            return None
+        phases = list(self.runs[self.current_run_id].keys())
+        if not phases:
+            return None
+        try:
+            idx = phases.index(self.current_phase)
+        except ValueError:
+            return phases[0]
+        return phases[idx + 1] if idx + 1 < len(phases) else phases[0]
+
+    def other_phase(self) -> Optional[str]:
+        """Return the OTHER phase in the current run, or None if only one exists."""
+        if self.current_run_id is None:
+            return None
+        phases = list(self.runs[self.current_run_id].keys())
+        if len(phases) != 2:
+            return None
+        return phases[0] if phases[1] == self.current_phase else phases[1]
 
 
 # ---------------------------------------------------------------------------

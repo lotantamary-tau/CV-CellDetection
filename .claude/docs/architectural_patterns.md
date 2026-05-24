@@ -8,7 +8,7 @@ Companion to [../../CLAUDE.md](../../CLAUDE.md). Documents how the `cnmf_toolkit
 [cnmf_toolkit/instrumented_cnmf.py](../../cnmf_toolkit/instrumented_cnmf.py) is a near-verbatim copy of upstream `caiman.source_extraction.cnmf.cnmf.CNMF`. The fork exists to insert `CNMFDebugTracker.save_stage(...)` calls between pipeline stages (initialization, spatial update, temporal update, merge, deconvolution) without changing the math. Treat the algorithmic body as upstream code under "do-not-touch" rules; only the hook sites and surrounding bookkeeping are local.
 
 ### Stage-keyed pipeline with pluggable visualization
-The CNMF pipeline is conceptually a sequence of named stages (`init`, `spatial_1`, `temporal_1`, `merge`, …). Every stage produces a uniform on-disk shape: `{stage}_N.npz` (dense matrices), `{stage}_N_A.npz` (sparse spatial), `metadata_{stage}_N.txt`. The napari viewer reads this shape and switches stages via numeric keys (1–8). Adding a new stage is a three-line change documented in [cnmf_toolkit/USAGE.md](../../cnmf_toolkit/USAGE.md) (STAGE_DEFINITIONS in `viewer/__init__.py`, save it via `CNMFDebugTracker`, bind a key in `viewer/stage_viewer.py`).
+The CNMF pipeline is conceptually a sequence of named stages (`init`, `spatial_1`, `temporal_1`, `merge`, …). Every stage produces a uniform on-disk shape inside a `run_<TS>/<phase>/` subfolder: `{stage}.npz` (dense matrices), `{stage}_A.npz` (sparse spatial), `metadata_{stage}.txt`. No counter suffix — the run/phase hierarchy discriminates between invocations. The napari viewer reads this shape and walks stages with F5/F6 (or jumps directly with Ctrl+1..9) — bindings are dynamic, so adding a new stage requires no keymap edit. Adding a stage is at most a two-line change documented in [cnmf_toolkit/USAGE.md](../../cnmf_toolkit/USAGE.md): optionally add a STAGE_DEFINITIONS entry in `viewer/__init__.py` for a friendly name and pipeline-order slot, then save it via `CNMFDebugTracker.save_stage(...)`. Stages not listed in STAGE_DEFINITIONS are still discovered on disk and shown last (order=999) with their raw name.
 
 ### Two-tier package: research code vs. production code
 [cnmf_toolkit/](../../cnmf_toolkit/) is the algorithm-adaptation surface — instrumented CNMF for understanding/tuning. [notebooks/](../../notebooks/) is where the lab's actual electrocyte-detection runs live. Cross-references go one direction: notebooks may use the toolkit; the toolkit does not depend on notebooks.
@@ -37,7 +37,7 @@ Provenance is tracked separately in `self.provenance` (see e.g. [cnmf_toolkit/in
 ## Recurring Logic Patterns
 
 ### Sparse + dense split for spatial components
-The spatial component matrix `A` is sparse; everything else is dense. The save format reflects this: `{stage}_N.npz` for dense arrays, `{stage}_N_A.npz` for sparse `A`. Code that consumes a stage must handle the absence of `A_sparse` (some stages skip it).
+The spatial component matrix `A` is sparse; everything else is dense. The save format reflects this: `{stage}.npz` for dense arrays, `{stage}_A.npz` for sparse `A` (both inside a `run_<TS>/<phase>/` subfolder). Code that consumes a stage must handle the absence of `A_sparse` (some stages skip it).
 
 ### Lazy import to break circulars
 [cnmf_toolkit/__init__.py:20](../../cnmf_toolkit/__init__.py#L20) uses module-level `__getattr__` to defer importing `CNMFManager`. This avoids a circular import between the toolkit's `__init__.py` and `cnmf_manager.py`, which itself imports from the CNMF module.
@@ -51,7 +51,7 @@ Historically the package folder was named `CaImAn-Visualizer` (with a hyphen), w
 [cnmf_runner.py](../../cnmf_toolkit/cnmf_runner.py) and [cnmf_viewer.py](../../cnmf_toolkit/cnmf_viewer.py) are both invoked as plain `python <file.py> [args]`. No `setup.py` console_scripts, no Click/Typer — just `argparse` (or simpler) and direct execution.
 
 ### Napari keybindings as the user surface
-The viewer is keyboard-driven: digit keys switch stages, letter keys (`S`, `I`, `SPACE`) trigger analyses, mouse click on an ROI opens a detail plot. New interactivity should follow this pattern (single-key bindings, registered in `viewer/stage_viewer.py`'s `_bind_keys` method) rather than building a GUI panel.
+The viewer is keyboard-driven, scoped coarse-to-fine: F1/F2 walk runs, F3/F4 walk phases within the current run, F5/F6 walk stages within the current phase (all circular), and Ctrl+1..Ctrl+9 jump directly to the Nth stage. Letter keys (`S`, `I`) print info to the terminal and `SPACE` analyzes the ROI under the cursor — mouse click is intentionally not bound because napari's pan/zoom intercepts it at the layer level. New interactivity should follow this pattern (single-key or modifier+key bindings registered in `viewer/stage_viewer.py`'s `_bind_keys` method) rather than building a GUI panel.
 
 ### Environment-variable configuration for optional integrations
 GDrive upload is configured exclusively through env vars (`GDRIVE_FOLDER_ID`, `GDRIVE_SERVICE_ACCOUNT_KEY`, `GDRIVE_CLIENT_SECRET`). No config file, no CLI flag — the integration silently no-ops if env vars are unset.

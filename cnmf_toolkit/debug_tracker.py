@@ -15,12 +15,28 @@ logger = logging.getLogger("caiman")
 class CNMFDebugTracker:
     """Tracks and saves all CNMF matrices at each pipeline stage.
 
+    Outputs are organized as:
+
+        <save_dir>/run_<run_id>/<phase>/<stage_name>.npz
+        <save_dir>/run_<run_id>/<phase>/<stage_name>_<sparse_key>.npz
+        <save_dir>/run_<run_id>/<phase>/metadata_<stage_name>.txt
+        ...
+
+    where ``run_id`` is a timestamp (auto-generated at construction) and
+    ``phase`` is one of ``'fit'`` (default) or ``'refit'`` (set explicitly by
+    the notebook via ``set_phase('refit')``).
+
     Args:
         save_dir: Directory to write outputs into. Defaults to env var
             ``CNMF_DEBUG_DIR`` or ``<repo>/data/results/debug_outputs/``
             (computed relative to this file so the path works from any CWD).
-        enabled: If False, all ``save_stage`` calls become no-ops so there
-            is zero overhead when you don't need debugging.
+            The actual run folder is appended below this.
+        enabled: If False, all ``save_stage`` calls become no-ops.
+        run_id: Run identifier (used in the subfolder name). Defaults to
+            the current timestamp ``YYYYMMDD_HHMMSS``.
+        default_phase: Initial phase. Defaults to ``'fit'`` so the runner
+            (which never calls ``set_phase``) automatically writes to
+            ``run_<id>/fit/``.
         gdrive_folder_id: Google Drive folder ID to upload files to.
             Falls back to env var ``GDRIVE_FOLDER_ID``.  Set to enable
             automatic upload of every debug file to Google Drive.
@@ -33,8 +49,10 @@ class CNMFDebugTracker:
     """
 
     def __init__(self, save_dir=None, enabled=True,
+                 run_id=None, default_phase='fit',
                  gdrive_folder_id=None, gdrive_service_account_key=None,
                  gdrive_client_secret=None, gdrive_delete_local=False):
+        # Resolve base dir (the parent of all run_<id>/ subfolders)
         if save_dir is None:
             # Default: <repo>/data/results/debug_outputs/, computed relative to
             # this file so it works regardless of CWD. CNMF_DEBUG_DIR env var
@@ -44,13 +62,20 @@ class CNMFDebugTracker:
                 "..", "data", "results", "debug_outputs",
             )
             save_dir = os.environ.get("CNMF_DEBUG_DIR", _default)
-        self.save_dir = save_dir
+        self.base_dir = save_dir
+
+        # Auto-generate a run_id from current timestamp if not provided.
+        if run_id is None:
+            run_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.run_id = run_id
+
+        self.current_phase = default_phase
         self.enabled = enabled
-        self.stage_counter = {}
         self.gdrive_delete_local = gdrive_delete_local
         self._gdrive = None  # lazy-initialised on first use
-        if self.enabled:
-            os.makedirs(self.save_dir, exist_ok=True)
+
+        # Compute the active save_dir = base/run_<id>/<phase>/ and create it
+        self._refresh_save_dir()
 
         # ---- Google Drive setup (optional) --------------------------------
         folder_id = gdrive_folder_id or os.environ.get("GDRIVE_FOLDER_ID")
@@ -62,10 +87,9 @@ class CNMFDebugTracker:
                     service_account_key=gdrive_service_account_key,
                     client_secret=gdrive_client_secret,
                 )
-                # Create a session sub-folder with a timestamp
-                ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                # Create a session sub-folder named after the run_id
                 self._gdrive.create_session_folder(
-                    f"cnmf_debug_{ts}"
+                    f"cnmf_debug_{self.run_id}"
                 )
                 print("[CNMFDebugTracker] Google Drive upload ENABLED")
             except Exception as exc:
@@ -75,22 +99,49 @@ class CNMFDebugTracker:
                 self._gdrive = None
 
     # ------------------------------------------------------------------
+    # Phase / enabled state management
+    # ------------------------------------------------------------------
+    def _refresh_save_dir(self):
+        """Recompute self.save_dir = base/run_<id>/<phase>/ and mkdir if enabled."""
+        self.save_dir = os.path.join(
+            self.base_dir, f"run_{self.run_id}", self.current_phase
+        )
+        if self.enabled:
+            os.makedirs(self.save_dir, exist_ok=True)
+
+    def set_phase(self, name):
+        """Switch the phase subfolder. Subsequent save_stage calls write here."""
+        self.current_phase = name
+        self._refresh_save_dir()
+
+    def enable(self):
+        """Re-enable snapshot writing. Idempotent."""
+        self.enabled = True
+        self._refresh_save_dir()
+
+    def disable(self):
+        """Stop writing snapshots. Subsequent save_stage calls are no-ops."""
+        self.enabled = False
+
+    # ------------------------------------------------------------------
     # public API
     # ------------------------------------------------------------------
     def save_stage(self, stage_name, dims=None, max_rois=100,
                    max_components=10, **matrices):
         """Persist every matrix passed as a keyword argument.
 
-        Sparse matrices are saved with ``scipy.sparse.save_npz`` (no
-        densification) so this stays memory-safe on large FOVs.
+        Files land at ``self.save_dir/{stage_name}.npz``,
+        ``self.save_dir/{stage_name}_<sparse_key>.npz``, and
+        ``self.save_dir/metadata_{stage_name}.txt`` — one set per stage per
+        phase per run. Calls in the same phase with the same stage_name
+        overwrite previous files (which is fine because one
+        algorithm pass produces each stage exactly once).
         """
         if not self.enabled:
             return
 
         print(f"\n========== [CNMFDebugTracker] Saving stage: "
-              f"'{stage_name}' ==========")
-        count = self.stage_counter.get(stage_name, 0)
-        self.stage_counter[stage_name] = count + 1
+              f"'{stage_name}' (run={self.run_id}, phase={self.current_phase}) ==========")
 
         # --- separate sparse vs dense values ---------------------------------
         sparse_dict = {}
@@ -105,55 +156,52 @@ class CNMFDebugTracker:
 
         # Save dense arrays in a single compressed npz
         if dense_dict:
-            npz_path = os.path.join(self.save_dir,
-                                    f"{stage_name}_{count}.npz")
+            npz_path = os.path.join(self.save_dir, f"{stage_name}.npz")
             np.savez_compressed(npz_path, **dense_dict)
             print(f"[CNMFDebugTracker] Dense arrays saved to {npz_path} "
                   f"with keys: {list(dense_dict.keys())}")
 
         # Save sparse matrices individually (keeps them sparse on disk)
         for key, val in sparse_dict.items():
-            sp_path = os.path.join(self.save_dir,
-                                   f"{stage_name}_{count}_{key}.npz")
+            sp_path = os.path.join(self.save_dir, f"{stage_name}_{key}.npz")
             scipy.sparse.save_npz(sp_path, val.tocsc())
             print(f"[CNMFDebugTracker] Sparse {key} saved to {sp_path} "
                   f"(shape={val.shape}, nnz={val.nnz})")
 
         # Metadata text file
-        self._save_metadata(stage_name, count, dims,
-                            {**dense_dict, **sparse_dict})
+        self._save_metadata(stage_name, dims, {**dense_dict, **sparse_dict})
 
         # Save masks as PNG (needs dense A, so only densify the ROIs we plot)
         if 'A' in matrices and matrices['A'] is not None and dims is not None:
-            self._save_masks_as_png(stage_name, count, matrices['A'],
+            self._save_masks_as_png(stage_name, matrices['A'],
                                     dims, max_rois)
 
         # Plot YrA traces
         if 'YrA' in dense_dict:
-            self._plot_YrA_traces(stage_name, count, dense_dict['YrA'],
+            self._plot_YrA_traces(stage_name, dense_dict['YrA'],
                                   max_components)
 
         # ---- Upload to Google Drive if configured -------------------------
         if self._gdrive is not None:
-            self._upload_stage_files(stage_name, count)
+            self._upload_stage_files(stage_name)
 
     # ------------------------------------------------------------------
     # private helpers
     # ------------------------------------------------------------------
-    def _upload_stage_files(self, stage_name, count):
+    def _upload_stage_files(self, stage_name):
         """Upload all files belonging to this stage to Google Drive."""
         prefix_patterns = [
-            f"{stage_name}_{count}",
-            f"metadata_{stage_name}_{count}",
-            f"ROI_",           # ROI PNGs include stage_name
-            f"YrA_traces_{stage_name}_{count}",
+            f"{stage_name}.npz",
+            f"{stage_name}_",        # sparse matrices
+            f"metadata_{stage_name}.txt",
+            f"ROI_",                 # ROI PNGs include stage_name in their filename
+            f"YrA_traces_{stage_name}.png",
         ]
         uploaded = []
         for fname in sorted(os.listdir(self.save_dir)):
             fpath = os.path.join(self.save_dir, fname)
             if not os.path.isfile(fpath):
                 continue
-            # Match files that belong to this stage+count
             if not any(
                 fname.startswith(p) and f"{stage_name}" in fname
                 for p in prefix_patterns
@@ -172,11 +220,12 @@ class CNMFDebugTracker:
             print(f"[CNMFDebugTracker] Uploaded {len(uploaded)} file(s) "
                   f"to Google Drive for stage '{stage_name}'")
 
-    def _save_metadata(self, stage_name, count, dims, matrices):
-        path = os.path.join(self.save_dir,
-                            f"metadata_{stage_name}_{count}.txt")
+    def _save_metadata(self, stage_name, dims, matrices):
+        path = os.path.join(self.save_dir, f"metadata_{stage_name}.txt")
         with open(path, "w") as f:
             f.write(f"Stage: {stage_name}\n")
+            f.write(f"Run ID: {self.run_id}\n")
+            f.write(f"Phase: {self.current_phase}\n")
             for key, val in matrices.items():
                 shape = val.shape if hasattr(val, 'shape') else 'N/A'
                 if scipy.sparse.issparse(val):
@@ -186,10 +235,8 @@ class CNMFDebugTracker:
             f.write(f"dims: {dims}\n")
         print(f"  Saved metadata to {path}")
 
-    def _save_masks_as_png(self, stage_name, count, A, dims, max_rois=100):
+    def _save_masks_as_png(self, stage_name, A, dims, max_rois=100):
         try:
-            # Handle sparse A without full densification: extract columns one
-            # at a time so peak memory is O(n_pixels) not O(n_pixels * K).
             is_sparse = scipy.sparse.issparse(A)
             n_components = A.shape[1]
             n_plot = min(n_components, max_rois)
@@ -211,13 +258,13 @@ class CNMFDebugTracker:
                 ax.set_title(f"ROI {i} ({stage_name})")
                 ax.axis('off')
                 path = os.path.join(self.save_dir,
-                                    f"ROI_{i}_{stage_name}_{count}.png")
+                                    f"ROI_{i}_{stage_name}.png")
                 plt.savefig(path)
                 plt.close(fig)
         except Exception as e:
             logger.warning(f"Failed to save mask PNGs for {stage_name}: {e}")
 
-    def _plot_YrA_traces(self, stage_name, count, YrA, max_components=10):
+    def _plot_YrA_traces(self, stage_name, YrA, max_components=10):
         try:
             if YrA is None or YrA.size == 0:
                 logger.warning(f"YrA is empty at {stage_name}")
@@ -237,7 +284,7 @@ class CNMFDebugTracker:
                     axes[i].set_xlabel('Time (frames)')
             plt.tight_layout()
             save_path = os.path.join(
-                self.save_dir, f"YrA_traces_{stage_name}_{count}.png")
+                self.save_dir, f"YrA_traces_{stage_name}.png")
             plt.savefig(save_path, dpi=150, bbox_inches='tight')
             plt.close(fig)
             print(f"  Saved YrA traces to {save_path}")
