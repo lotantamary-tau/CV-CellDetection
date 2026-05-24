@@ -72,7 +72,7 @@ python cnmf_runner.py path/to/movie.tif --config greedy_roi_no_patches_config
 python cnmf_viewer.py
 ```
 
-The viewer is keyboard-driven: `F1`–`F7` switch between pipeline stages (dynamically bound to the stages present in the current phase), `F8` toggles fit ↔ refit, `F9`/`F10` walk between past runs, and clicking an ROI opens a component-analysis plot. Each CNMF invocation lands in its own `data/results/debug_outputs/run_<ts>/<phase>/` subfolder. Full controls and per-stage output format are documented in [cnmf_toolkit/USAGE.md](cnmf_toolkit/USAGE.md).
+The viewer is keyboard-driven, scoped coarse-to-fine: `F1`/`F2` walk between past runs, `F3`/`F4` toggle between phases (fit ↔ refit) within a run, `F5`/`F6` step through pipeline stages within a phase, and `Ctrl+1`..`Ctrl+9` jump directly to the Nth stage. All navigation wraps circularly. Press `SPACE` over an ROI to open a component-analysis plot (mouse click is not bound — napari's pan/zoom intercepts it). Each CNMF invocation lands in its own `data/results/debug_outputs/run_<ts>/<phase>/` subfolder. Full controls and per-stage output format are documented in [cnmf_toolkit/USAGE.md](cnmf_toolkit/USAGE.md).
 
 ## Optional: Google Drive offload of debug outputs
 
