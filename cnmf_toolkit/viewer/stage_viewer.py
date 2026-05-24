@@ -310,7 +310,7 @@ class CNMFDebugStageViewer:
 
         print(
             "\nKeys: F1/F2 run | F3/F4 phase | F5/F6 stage | "
-            "Ctrl+1..9 jump | S info | I component | SPACE/click ROI"
+            "Ctrl+1..9 jump | S info | I component | SPACE = analyze ROI"
         )
         print(
             f"Run {self.store.current_run_id}  |  Phase {self.store.current_phase}"
