@@ -75,19 +75,50 @@ Drop TIF videos into `data/RawData/` and tagged ROIs into `data/TaggedData/`. Th
 
 ## Running cnmf_toolkit
 
-From the activated env:
+From the activated env, `cd cnmf_toolkit` first.
+
+### Step 1 — produce per-stage debug data
+
+There are **two ways** to generate the stage snapshots the viewer reads. Both write to the same place and feed the same viewer:
+
+**a) Runner — one command, headless.** Best for a quick, repeatable run with a named config:
 
 ```bash
-cd cnmf_toolkit
+python cnmf_runner.py "../data/RawData/your_movie.tif" --config greedy_roi_no_patches_config
+```
 
-# Run CNMF on a movie and save per-stage debug data
-python cnmf_runner.py path/to/movie.tif --config greedy_roi_no_patches_config
+Runs no-patches, `fit` phase only.
 
-# Then inspect the stages interactively in napari
+**b) Notebook — your normal analysis.** In [the analysis notebook](notebooks/OPCal_cell%20detection_caiman_150226.ipynb), flip the two toggles near the top (the "Imports and general setup" cell), then run the notebook as usual:
+
+```python
+DEBUG_FIT = True     # capture the initial (patches-mode) fit
+DEBUG_REFIT = True   # capture the refit
+```
+
+With both left `False` (the default), the notebook behaves byte-identically to upstream CaImAn — nothing is written.
+
+Either way, each run lands in its own folder — `data/results/debug_outputs/run_<timestamp>/<phase>/`, where `<phase>` is `fit` or `refit` — so runs never overwrite each other.
+
+### Step 2 — inspect the stages in napari
+
+```bash
 python cnmf_viewer.py
 ```
 
-The viewer is keyboard-driven, scoped coarse-to-fine: `F1`/`F2` walk between past runs, `F3`/`F4` toggle between phases (fit ↔ refit) within a run, `F5`/`F6` step through pipeline stages within a phase, and `Ctrl+1`..`Ctrl+9` jump directly to the Nth stage. All navigation wraps circularly. Press `SPACE` over an ROI to open a component-analysis plot (mouse click is not bound — napari's pan/zoom intercepts it). Each CNMF invocation lands in its own `data/results/debug_outputs/run_<ts>/<phase>/` subfolder. Full controls and per-stage output format are documented in [cnmf_toolkit/USAGE.md](cnmf_toolkit/USAGE.md).
+The viewer auto-discovers every run/phase/stage on disk. It is keyboard-driven, scoped coarse → fine, and **all navigation wraps** at the edges:
+
+| Key | Action |
+|---|---|
+| `F1` / `F2` | previous / next **run** |
+| `F3` / `F4` | previous / next **phase** (fit ↔ refit) |
+| `F5` / `F6` | previous / next **stage** (within the phase) |
+| `Ctrl+1`..`Ctrl+9` | jump directly to the Nth stage in the current phase |
+| `S` | print the "you are here" map (runs / phases / stages) to the terminal |
+| `I` | print component info to the terminal |
+| `SPACE` | analyze the ROI under the cursor (opens a component-analysis plot) |
+
+A couple of rules worth knowing: switching run or phase always lands you on the `final` stage (a consistent starting point), and **mouse-click is not bound** — napari's pan/zoom owns it, so hover a cell and press `SPACE` to inspect it. Full keymap and per-stage output format: [cnmf_toolkit/USAGE.md](cnmf_toolkit/USAGE.md).
 
 ## Optional: Google Drive offload of debug outputs
 
