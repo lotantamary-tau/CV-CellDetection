@@ -11,10 +11,25 @@ The repo has two parts:
 
 ```
 CV-CellDetection/
-├── cnmf_toolkit/            # Forked CNMF + per-stage debug + napari viewer
+├── cnmf_toolkit/            # Forked CNMF + per-stage debug hooks + napari viewer
+│   ├── cnmf_runner.py       #   run CNMF on a movie (CLI)
+│   ├── cnmf_viewer.py       #   launch the napari stage-by-stage viewer (CLI)
+│   ├── instrumented_cnmf.py #   upstream CNMF, instrumented with debug hooks
+│   ├── debug_tracker.py     #   writes per-stage snapshots
+│   ├── cnmf_manager.py      #   named-config runner
+│   ├── viewer/              #   napari viewer sub-package
+│   └── USAGE.md             #   operational guide + full keymap
 ├── notebooks/               # Lab's electrocyte-detection analyses
-├── data/                    # *mostly gitignored* — structure ships pre-built (RawData/, TaggedData/, results/), drop your TIFs in
-├── environment.yml          # Conda environment spec
+├── data/                    # content gitignored — but the folder structure ships pre-built:
+│   ├── RawData/             #   drop your .tif movies here
+│   ├── TaggedData/          #   manual ROI annotations
+│   └── results/
+│       ├── debug_outputs/   #   per-run, per-stage matrices (run_<ts>/<phase>/)
+│       └── hdf5/            #   final CNMF results
+├── environment.yml          # One-command conda env: cv-celldetection
+├── README.md                # This file
+├── CHANGELOG.md             # Per-PR history of what changed on main
+├── FUTURE_TASKS.md          # Backlog of low-priority improvements
 ├── CLAUDE.md                # Project context for Claude Code
 └── .claude/docs/            # Deeper architectural notes
 ```
