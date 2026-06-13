@@ -82,6 +82,8 @@ Update only the affected section(s). Do not rewrite the whole file. Apply the sa
 
 ## Additional Documentation
 
+- [CHANGELOG.md](CHANGELOG.md) — per-PR history of what changed on `main`, in reverse chronological order. Read this to see recent project history.
+- [FUTURE_TASKS.md](FUTURE_TASKS.md) — backlog of low-priority improvements, plus the RESOLVED-and-struck-through items showing what was finished recently.
 - [.claude/docs/architectural_patterns.md](.claude/docs/architectural_patterns.md) — staged-debug pattern, napari viewer plugin model, named-config conventions, and the relationship between this fork and upstream CaImAn.
 - [cnmf_toolkit/USAGE.md](cnmf_toolkit/USAGE.md) — operational guide: per-stage outputs, viewer keybindings, RAM-pressure recovery.
 - [cnmf_toolkit/GDRIVE_SETUP.md](cnmf_toolkit/GDRIVE_SETUP.md) — Google Drive upload setup for debug outputs.
