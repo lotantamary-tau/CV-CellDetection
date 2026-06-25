@@ -21,6 +21,8 @@ The CNMF class is heavily stateful with many in-place mutations across long meth
 ### Adapting to electrocytes vs. neurons
 Electrocyte cells have different spatial scale, firing dynamics, and acquisition rate than the calcium-imaging neurons CaImAn was tuned for. The "named-config" pattern in [cnmf_toolkit/cnmf_manager.py](../../cnmf_toolkit/cnmf_manager.py) captures this: each config bakes in a parameter set (`fr`, `decay_time`, `gSig`, `min_SNR`, `rval_thr`, `min_cnn_thr`, …) appropriate for our data. The `*_no_patches_config` variants are the lab's electrocyte parameters; the others are inherited from CaImAn defaults for comparison.
 
+**Mission learnings (merge-tuning, 2026-06-20; full trace in the gitignored `docs/superpowers/`).** Three findings shape how we adapt CaImAn here: (1) **initialization is decisive** — detection errors (merges *and* misses) are set at the seeding stage, so post-init knobs like `merge_thr` can't fix them; tune `method_init` / `gSig` / `min_corr` / `min_pnr` instead. (2) The **CNN component classifier is trained on neurons** — keep `use_cnn=False` for electrocytes or it rejects real cells. (3) Electrocytes are **low-SNR with slow sustained ramps** (not fast transients), so SNR-based evaluation and the AR/`decay_time` model are only partial fits. These are *why* the next phase pivots toward `corr_pnr` init + motion correction rather than more merge-parameter sweeps.
+
 ### Optional Google Drive offload
 Per-stage outputs can balloon to many GB on a long movie. [cnmf_toolkit/gdrive_uploader.py](../../cnmf_toolkit/gdrive_uploader.py) and [cnmf_toolkit/GDRIVE_SETUP.md](../../cnmf_toolkit/GDRIVE_SETUP.md) provide an opt-in upload-and-delete-local flow so a debug run does not fill a workstation disk.
 
@@ -38,6 +40,9 @@ Provenance is tracked separately in `self.provenance` (see e.g. [cnmf_toolkit/in
 
 ### Sparse + dense split for spatial components
 The spatial component matrix `A` is sparse; everything else is dense. The save format reflects this: `{stage}.npz` for dense arrays, `{stage}_A.npz` for sparse `A` (both inside a `run_<TS>/<phase>/` subfolder). Code that consumes a stage must handle the absence of `A_sparse` (some stages skip it).
+
+### Evaluation outputs keyed by test plan (local/gitignored)
+The merge-tuning mission scores CNMF runs against the manual annotation with `docs/superpowers/research/merge_eval.py` (local tool). Its outputs follow a fixed convention so experiments stay traceable as they accumulate: one PNG per run under `data/results/comparisons/test-plan-<N>/`, named `exp<NN>_<slug>.png` (NN = experiment number matching the test log, slug = what changed), with a metrics row auto-appended to that folder's `INDEX.md`. A new tuning round = a new `test-plan-<N>/` subfolder. When this evaluator is promoted into `cnmf_toolkit/` (it adds IoU/Dice + a labelled annotation), keep this output convention.
 
 ### Lazy import to break circulars
 [cnmf_toolkit/__init__.py:20](../../cnmf_toolkit/__init__.py#L20) uses module-level `__getattr__` to defer importing `CNMFManager`. This avoids a circular import between the toolkit's `__init__.py` and `cnmf_manager.py`, which itself imports from the CNMF module.

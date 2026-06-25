@@ -18,8 +18,16 @@ data/
     │       │   └── ...
     │       └── refit/               from notebook if DEBUG_REFIT=True
     │           └── (same stage files as fit/)
-    └── hdf5/            final HDF5 + config JSON written by cnmf_runner.py
+    ├── hdf5/            final HDF5 + config JSON written by cnmf_runner.py
+    └── comparisons/     evaluation overlay PNGs (merge_eval.py / notebook), by test plan
+        ├── INDEX.md         maps every figure → experiment → metrics
+        ├── test-plan-1/     first tuning round (exp00…exp04 + _superseded/ duplicates)
+        └── test-plan-2/     current round; merge_eval.py auto-appends to its INDEX.md
 ```
+
+`comparisons/` is created at runtime (not shipped via `.gitkeep`) and, like the rest of
+`results/`, is gitignored. It is the merge-tuning mission's evaluation output; see
+`docs/superpowers/README.md` (local) for context.
 
 ## What's gitignored
 

@@ -6,6 +6,48 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com): each PR h
 
 ---
 
+## [Unreleased] — local working state (NOT a merged PR)
+
+> ⚠️ Everything in this section is **local-only / gitignored / untracked** — it has **not**
+> merged to `main` and has **no commit SHA**. It's recorded here for traceability of the
+> in-progress **merge-tuning mission** (Notion "Merge parameter tuning"). It will graduate
+> into a real dated PR entry above only if/when keeper changes to tracked code (`cnmf_toolkit/`,
+> the committed notebook) are merged. The authoritative trace lives under
+> `docs/superpowers/` (git-ignored) — start at `docs/superpowers/README.md`.
+
+### Added (local working artifacts)
+
+- **Merge-tuning research mission (test plan 1 → test plan 2).** Investigated CaImAn's merge
+  step + surrounding pipeline against the manual annotation. Key result: the merge **errors are
+  set at initialization**, not the merge step (`merge_thr`/`K`/`gSig` sweeps don't reduce them);
+  the dominant *fixable* signal (junk/over-detection) is confounded by an incomplete binary
+  annotation. A second deep dive (with the previous teammate Sheer Glaor's research + the
+  neuron→electrocyte lens) reframed the next phase around `corr_pnr` initialization + motion
+  correction. Trace: `docs/superpowers/research/` (findings, testlog, summary, deep-dive) and
+  `specs/2026-06-20-merge-tuning-spec.md`.
+- **`docs/superpowers/research/merge_eval.py`** — local evaluation tool. Scores a CNMF run vs
+  the annotation (correct/merge/split/junk/covered/missed), watershed-separates touching cells,
+  and saves a color-coded 2-panel overlay PNG. Precursor to a formal `cnmf_toolkit/` evaluator.
+- **Experiment notebook** `notebooks/OPCal_cell detection_caiman_150226_merge-tuning.ipynb`
+  (untracked duplicate; the committed original stays pristine) — adds an annotation-path cell,
+  a component-evaluation (Path-D) cell, and a ground-truth comparison cell.
+
+### Changed (local working artifacts)
+
+- **`merge_eval.py` save scheme.** Now takes `<exp> <slug>` → writes
+  `data/results/comparisons/test-plan-2/exp<NN>_<slug>.png` and **auto-appends a metrics row**
+  to that folder's `INDEX.md` (replaces the old confusable `eval_<label>_n<K>.png` naming). The
+  notebook's by-eye overlay now saves alongside as `notebook-overlay_<run_id>.png`.
+- **Folder reorganization (2026-06-20).**
+  - `data/results/comparisons/` — flat, confusably-named PNGs reorganized **by test plan**:
+    `test-plan-1/` (the Exp #0–#4 figures, renamed `exp00…exp04`), `test-plan-2/` (current),
+    `_superseded/` (old duplicate renders), and a top-level `INDEX.md` mapping every figure.
+  - `docs/superpowers/` — consistent `…-merge-tuning-<role>.md` names, a new `README.md` index,
+    and an `archive/` for the closed v1 spec/plan + older unrelated plans. (`merge_eval.py`
+    stays in `research/`.)
+
+---
+
 ## [2026-05-24] PR #3 — Multi-run isolation + fit/refit phase + new viewer keymap
 
 Merge commit: [`90008e5`](https://github.com/lotantamary-tau/CV-CellDetection/commit/90008e5). Resolved FUTURE_TASKS items #2, #3, #4.

@@ -26,9 +26,10 @@ CV-CellDetection is a lab-internal toolkit for adapting [CaImAn](https://github.
 | [cnmf_toolkit/gdrive_uploader.py](cnmf_toolkit/gdrive_uploader.py) | Optional Google Drive upload of debug outputs. |
 | [cnmf_toolkit/compare_pixels.py](cnmf_toolkit/compare_pixels.py) | Diagnostic CLI: compare raw fluorescence signals at two pixel locations side-by-side. |
 | [notebooks/](notebooks/) | The notebooks the lab actually uses for electrocyte detection (production analysis lives here, not in the toolkit). |
-| [`data/`](data/) | Folder structure (`RawData/`, `TaggedData/`, `results/debug_outputs/`, `results/hdf5/`) ships with the repo via `.gitkeep` markers — friends cloning don't need to create any folder. All actual content (TIFs, NPZs, HDF5s) is gitignored. See [data/README.md](data/README.md) for full layout. |
+| [`data/`](data/) | Folder structure (`RawData/`, `TaggedData/`, `results/debug_outputs/`, `results/hdf5/`) ships with the repo via `.gitkeep` markers — friends cloning don't need to create any folder. All actual content (TIFs, NPZs, HDF5s) is gitignored. `results/comparisons/` (created at runtime, gitignored) holds evaluation overlay PNGs organized by test plan (`test-plan-1/`, `test-plan-2/`) with an `INDEX.md`. See [data/README.md](data/README.md) for full layout. |
 | `caiman_data/` | **Gitignored.** Installed via `caimanmanager install`; not project code. |
-| `research/` | **Gitignored.** Reference papers (kept locally, not redistributed). |
+| `research/` | **Gitignored.** Reference papers + the previous teammate's CaImAn handover (kept locally, not redistributed). |
+| `docs/` | **Gitignored.** Local working docs for the merge-tuning mission (specs, plans, research notes, the `merge_eval.py` eval tool). Index at `docs/superpowers/README.md`. |
 
 See [.claude/docs/architectural_patterns.md](.claude/docs/architectural_patterns.md) for the staged-debug pattern, viewer plugin model, and config-naming scheme.
 
@@ -87,3 +88,4 @@ Update only the affected section(s). Do not rewrite the whole file. Apply the sa
 - [.claude/docs/architectural_patterns.md](.claude/docs/architectural_patterns.md) — staged-debug pattern, napari viewer plugin model, named-config conventions, and the relationship between this fork and upstream CaImAn.
 - [cnmf_toolkit/USAGE.md](cnmf_toolkit/USAGE.md) — operational guide: per-stage outputs, viewer keybindings, RAM-pressure recovery.
 - [cnmf_toolkit/GDRIVE_SETUP.md](cnmf_toolkit/GDRIVE_SETUP.md) — Google Drive upload setup for debug outputs.
+- `docs/superpowers/README.md` — **gitignored, local-only.** Index of the in-progress **merge-tuning mission** working docs (spec, plan, findings, test log, deep-dive, and the `merge_eval.py` evaluation tool). Start here to trace that work; its status is also summarized in CHANGELOG's `[Unreleased]` section.
