@@ -96,7 +96,7 @@ DEBUG_FIT = True     # capture the initial (patches-mode) fit
 DEBUG_REFIT = True   # capture the refit
 ```
 
-With both left `False` (the default), the notebook behaves byte-identically to upstream CaImAn — nothing is written.
+**These two flags only matter if you want to use the optional tools below** (the viewer **or** the scorer): they're what write the per-stage data those tools read. The detection itself runs the same either way — with both left `False` (the default), the notebook behaves byte-identically to upstream CaImAn and simply writes nothing for the tools.
 
 Either way, each run lands in its own folder — `data/results/debug_outputs/run_<timestamp>/<phase>/`, where `<phase>` is `fit` or `refit` — so runs never overwrite each other.
 
