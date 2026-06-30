@@ -75,13 +75,11 @@ This populates a local `caiman_data/` folder (not committed to this repo).
 
 Drop TIF videos into `data/RawData/` and tagged ROIs into `data/TaggedData/`. The folder structure (including `results/` for CNMF outputs) is already there — you don't need to create anything. Actual data files are gitignored, so your recordings stay local.
 
-## Running cnmf_toolkit
+## Running the detection (the one required step)
 
-From the activated env, `cd cnmf_toolkit` first.
+Run CNMF on a movie. This is the **only required step** — it produces the per-stage output that the optional tools further down read. From the activated env, `cd cnmf_toolkit` first.
 
-### Step 1 — produce per-stage debug data
-
-There are **two ways** to generate the stage snapshots the viewer reads. Both write to the same place and feed the same viewer:
+There are **two ways** to run; both write to the same place:
 
 **a) Runner — one command, headless.** Best for a quick, repeatable run with a named config:
 
@@ -102,7 +100,11 @@ With both left `False` (the default), the notebook behaves byte-identically to u
 
 Either way, each run lands in its own folder — `data/results/debug_outputs/run_<timestamp>/<phase>/`, where `<phase>` is `fit` or `refit` — so runs never overwrite each other.
 
-### Step 2 — inspect the stages in napari
+## Optional tools — inspect or score a run
+
+After a run, **two independent tools** read its output. They are **separate and optional** — use either, both, or neither, and **neither one needs the other** (the scorer does *not* require the viewer). Both just need a run to exist; the scorer also needs a manual annotation.
+
+### Tool A — view the stages in napari (the viewer)
 
 ```bash
 python cnmf_viewer.py
@@ -122,13 +124,15 @@ The viewer auto-discovers every run/phase/stage on disk. It is keyboard-driven, 
 
 A couple of rules worth knowing: switching run or phase always lands you on the `final` stage (a consistent starting point), and **mouse-click is not bound** — napari's pan/zoom owns it, so hover a cell and press `SPACE` to inspect it. Full keymap and per-stage output format: [cnmf_toolkit/USAGE.md](cnmf_toolkit/USAGE.md).
 
-### Step 3 — score a run against manual tags (optional)
+### Tool B — score a run against your manual tags (the ground-truth scorer)
 
 ```bash
-python ground_truth_scorer.py --annotation ../data/TaggedData/<your_tags>.tif
+python ground_truth_scorer.py --annotation ../data/TaggedData/your_tags.tif
 ```
 
-`ground_truth_scorer.py` overlays the detected cells on your manual annotation and reports, for the run, how many cells were detected **correctly** vs **merged** (one detection over several cells), **split** (several detections on one cell), **junk** (a detection on no cell), and **missed** — plus a color-coded overlay PNG saved to `data/results/comparisons/`. It scores the most recent run by default (`--run <id>` for a specific one, `--stage refit/final` to pick a stage, `--no-plot` for counts only).
+`--annotation` points to your **manual ground-truth file** — the hand-made tag image (your "answer key" for where the real cells are). It is a **single `.tif` file** inside `data/TaggedData/`; replace `your_tags.tif` with the actual file name for the recording you scored (e.g. `20250409_3_Glut_1mM_ROI_AllCells.tif`).
+
+The scorer overlays the detected cells on that annotation and reports, for the run, how many cells were detected **correctly** vs **merged** (one detection over several cells), **split** (several detections on one cell), **junk** (a detection on no cell), and **missed** — plus a color-coded overlay PNG saved to `data/results/comparisons/`. It scores the most recent run by default (`--run <id>` for a specific one, `--stage refit/final` to pick a stage, `--no-plot` for counts only).
 
 > **Accuracy — version 1.** It treats the annotation as a binary mask and separates touching cells with a watershed heuristic, so the numbers are reliable for **comparing runs/configs against each other**, but are **not** exact per-cell accuracy. Exact accuracy (per-cell IoU/Dice) needs a **per-cell labelled** annotation (each cell its own label) — the planned v2. Details: [cnmf_toolkit/USAGE.md](cnmf_toolkit/USAGE.md).
 
