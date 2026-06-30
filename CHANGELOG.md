@@ -6,7 +6,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com): each PR h
 
 ---
 
-## [2026-06-25] — Ground-truth scorer tool (PR — pending merge)
+## [2026-06-25] PR #4 — Ground-truth scorer tool
+
+Merge commit: [`3a1deee`](https://github.com/lotantamary-tau/CV-CellDetection/commit/3a1deee).
 
 ### Added
 
