@@ -51,6 +51,20 @@ STEP-BY-STEP (copy-paste these commands)
   │   See "NAPARI VIEWER KEY BINDINGS" below for the full keymap.    │
   └──────────────────────────────────────────────────────────────────┘
 
+  ┌──────────────────────────────────────────────────────────────────┐
+  │ STEP 3 — Score a run against manual tags (optional)             │
+  │                                                                  │
+  │   python ground_truth_scorer.py \                                │
+  │       --annotation ../data/TaggedData/<your_tags>.tif            │
+  │                                                                  │
+  │   Scores the most recent run vs the manual annotation: prints    │
+  │   correct / merge / split / junk / covered / missed, and saves   │
+  │   a color-coded overlay PNG to ../data/results/comparisons/.     │
+  │   Options: --run <id>  --stage refit/final  --output <dir>       │
+  │            --label <name>  --no-plot  --thr-foot  --min-sep      │
+  │   See "GROUND-TRUTH SCORER" below for details + accuracy notes.  │
+  └──────────────────────────────────────────────────────────────────┘
+
 
 OUTPUT FILES (auto-created)
 ---------------------------
@@ -230,6 +244,40 @@ AVAILABLE CONFIGS
     min_SNR=2.0, rval_thr=0.85, min_cnn_thr=0.99
 
 
+GROUND-TRUTH SCORER  (ground_truth_scorer.py)
+---------------------------------------------
+Scores a CNMF run's detected cells against a manual ground-truth annotation and
+saves a color-coded overlay you can eyeball.
+
+  WHAT IT REPORTS (per run):
+    correct  one detection on one cell        merge   one detection over >= 2 cells
+    split    one cell under >= 2 detections   junk    a detection on no cell
+    covered / missed   cells of the total
+  Plus a 2-panel PNG: left = the ground-truth cells; right = the detections
+  classified over the tags (green=correct, orange=MERGE, blue=split, red=JUNK,
+  magenta-X = missed cell).
+
+  RUN IT (from cnmf_toolkit/, after STEP 0):
+    python ground_truth_scorer.py --annotation ../data/TaggedData/<your_tags>.tif
+
+  COMMON OPTIONS:
+    --run <id>            score a specific run_<id> (default: the latest run)
+    --stage refit/final   which saved stage to score (default: auto - the
+                          evaluated stage if present, else the final stage)
+    --output <dir>        where to write the PNG (default: data/results/comparisons)
+    --label <name>        title + PNG file name (default: the run id)
+    --no-plot             print the counts only
+    --thr-foot 0.2        footprint threshold (fraction of each detection's peak)
+    --min-sep 5           min pixels between cell centres for the watershed
+
+  ACCURACY (READ THIS) — VERSION 1, APPROXIMATE:
+    The annotation is treated as a BINARY mask and touching cells are separated by
+    a watershed heuristic. So the counts are reliable for RELATIVE comparison
+    (run A vs run B / config vs config) but are NOT exact per-cell accuracy.
+    For exact accuracy (per-cell IoU/Dice) we need a per-cell LABELLED annotation
+    (each cell its own integer label) — the planned v2 upgrade.
+
+
 FILES IN THIS DIRECTORY
 -----------------------
   USAGE.md                     This file
@@ -239,6 +287,7 @@ FILES IN THIS DIRECTORY
   debug_tracker.py             CNMFDebugTracker (saves per-stage data)
   gdrive_uploader.py           Optional Google Drive upload
   cnmf_viewer.py               Napari viewer entry point (Step 2)
+  ground_truth_scorer.py       Score a run vs manual tags (Step 3)
   instrumented_cnmf.py         CNMF class with per-stage debug hooks
   compare_pixels.py            Diagnostic CLI: compare 2 pixel signals
   viewer/                      Viewer sub-package

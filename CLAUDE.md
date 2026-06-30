@@ -22,6 +22,7 @@ CV-CellDetection is a lab-internal toolkit for adapting [CaImAn](https://github.
 | [cnmf_toolkit/cnmf_manager.py](cnmf_toolkit/cnmf_manager.py) | `CNMFManager` — runs CNMF with named parameter configs (e.g. `greedy_roi_no_patches_config`, `corr_pnr_no_patches_config`). |
 | [cnmf_toolkit/cnmf_runner.py](cnmf_toolkit/cnmf_runner.py) | CLI entry point for a single CNMF run. |
 | [cnmf_toolkit/cnmf_viewer.py](cnmf_toolkit/cnmf_viewer.py) | Launches the napari stage-by-stage viewer. |
+| [cnmf_toolkit/ground_truth_scorer.py](cnmf_toolkit/ground_truth_scorer.py) | CLI: score a CNMF run's detections vs a manual ground-truth annotation (correct/merge/split/junk/covered/missed) + color-coded overlay PNG. **v1 — approximate** (binary mask + watershed heuristic; per-cell IoU/Dice needs a labelled annotation). Generalized, shareable version of the local `merge_eval.py`. |
 | [cnmf_toolkit/viewer/](cnmf_toolkit/viewer/) | Napari viewer subpackage (stage store, plotting, image utils). |
 | [cnmf_toolkit/gdrive_uploader.py](cnmf_toolkit/gdrive_uploader.py) | Optional Google Drive upload of debug outputs. |
 | [cnmf_toolkit/compare_pixels.py](cnmf_toolkit/compare_pixels.py) | Diagnostic CLI: compare raw fluorescence signals at two pixel locations side-by-side. |
