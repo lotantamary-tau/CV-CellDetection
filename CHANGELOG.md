@@ -6,6 +6,21 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com): each PR h
 
 ---
 
+## [2026-06-25] — Ground-truth scorer tool (PR — pending merge)
+
+### Added
+
+- **`cnmf_toolkit/ground_truth_scorer.py`** — CLI tool that scores a CNMF run's detections against a manual ground-truth annotation: prints **correct / merge / split / junk / covered / missed** and saves a color-coded 2-panel overlay PNG to `data/results/comparisons/`. It is the **generalized, shareable** version of the lab's local `merge_eval.py` research script — identical scoring math, but with `argparse` flags (`--annotation`, `--run`, `--stage`, `--output`, `--label`, `--no-plot`, `--thr-foot`, `--min-sep`), repo-anchored default paths (works from the repo root or `cnmf_toolkit/`), and no hardcoded experiment bookkeeping. No new dependencies (numpy / scipy / scikit-image / tifffile / matplotlib, all already in `environment.yml`).
+- **Accuracy = v1 (approximate):** treats the annotation as a binary mask and watershed-separates touching cells, so counts are reliable for *relative* run-vs-run comparison but not exact per-cell accuracy. Exact per-cell IoU/Dice needs a per-cell **labelled** annotation (planned v2).
+
+### Documentation
+
+- `README.md`: "Step 3 — score a run against manual tags" + the tool in the repo-layout block + `data/results/comparisons/`.
+- `cnmf_toolkit/USAGE.md`: "GROUND-TRUTH SCORER" section + a STEP 3 box + the file list.
+- `CLAUDE.md`: directory-table entry for the new tool.
+
+---
+
 ## [Unreleased] — local working state (NOT a merged PR)
 
 > ⚠️ Everything in this section is **local-only / gitignored / untracked** — it has **not**

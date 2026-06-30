@@ -14,6 +14,7 @@ CV-CellDetection/
 ├── cnmf_toolkit/            # Forked CNMF + per-stage debug hooks + napari viewer
 │   ├── cnmf_runner.py       #   run CNMF on a movie (CLI)
 │   ├── cnmf_viewer.py       #   launch the napari stage-by-stage viewer (CLI)
+│   ├── ground_truth_scorer.py #  score a run vs manual tags + overlay PNG (CLI)
 │   ├── instrumented_cnmf.py #   upstream CNMF, instrumented with debug hooks
 │   ├── debug_tracker.py     #   writes per-stage snapshots
 │   ├── cnmf_manager.py      #   named-config runner
@@ -25,6 +26,7 @@ CV-CellDetection/
 │   ├── TaggedData/          #   manual ROI annotations
 │   └── results/
 │       ├── debug_outputs/   #   per-run, per-stage matrices (run_<ts>/<phase>/)
+│       ├── comparisons/     #   ground-truth-scorer overlay PNGs
 │       └── hdf5/            #   final CNMF results
 ├── environment.yml          # One-command conda env: cv-celldetection
 ├── README.md                # This file
@@ -119,6 +121,16 @@ The viewer auto-discovers every run/phase/stage on disk. It is keyboard-driven, 
 | `SPACE` | analyze the ROI under the cursor (opens a component-analysis plot) |
 
 A couple of rules worth knowing: switching run or phase always lands you on the `final` stage (a consistent starting point), and **mouse-click is not bound** — napari's pan/zoom owns it, so hover a cell and press `SPACE` to inspect it. Full keymap and per-stage output format: [cnmf_toolkit/USAGE.md](cnmf_toolkit/USAGE.md).
+
+### Step 3 — score a run against manual tags (optional)
+
+```bash
+python ground_truth_scorer.py --annotation ../data/TaggedData/<your_tags>.tif
+```
+
+`ground_truth_scorer.py` overlays the detected cells on your manual annotation and reports, for the run, how many cells were detected **correctly** vs **merged** (one detection over several cells), **split** (several detections on one cell), **junk** (a detection on no cell), and **missed** — plus a color-coded overlay PNG saved to `data/results/comparisons/`. It scores the most recent run by default (`--run <id>` for a specific one, `--stage refit/final` to pick a stage, `--no-plot` for counts only).
+
+> **Accuracy — version 1.** It treats the annotation as a binary mask and separates touching cells with a watershed heuristic, so the numbers are reliable for **comparing runs/configs against each other**, but are **not** exact per-cell accuracy. Exact accuracy (per-cell IoU/Dice) needs a **per-cell labelled** annotation (each cell its own label) — the planned v2. Details: [cnmf_toolkit/USAGE.md](cnmf_toolkit/USAGE.md).
 
 ## Optional: Google Drive offload of debug outputs
 
