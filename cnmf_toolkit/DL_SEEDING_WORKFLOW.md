@@ -19,11 +19,13 @@ The pipeline spans **two notebooks** because the heavy AI model needs a GPU:
 Everything else is fixed. For your own recording you edit **three filenames** (the folder paths are
 relative to the repo, so they keep working as long as you don't move things):
 
-| Variable | In which cell | Set it to |
-|---|---|---|
-| `video_path` | top of the local notebook | your movie in `data/RawData/…tif` |
-| `annotation_path` | top of the local notebook | your manual tags in `data/TaggedData/…tif` |
-| `MASK_PATH` | the "Build CellPose seeds" cell | the CellPose mask you download from Colab |
+All three live in **one CONFIG cell at the top of the local notebook**:
+
+| Variable | Set it to |
+|---|---|
+| `video_path` | your movie in `data/RawData/…tif` |
+| `annotation_path` | your manual tags in `data/TaggedData/…tif` |
+| `MASK_PATH` | the CellPose mask you download from Colab (`data/results/comparisons/…npy`) |
 
 ---
 
@@ -58,7 +60,7 @@ This writes `data/results/comparisons/_proj_corr.tif` (+ mean/max). `_proj_corr.
 
 ### Step 4 — extract activity in the local notebook
 1. Put the downloaded `.npy` mask into `data/results/comparisons/`.
-2. In the "Build CellPose seeds" cell, set `MASK_PATH` to that file.
+2. In the CONFIG cell at the top, set `MASK_PATH` to that file.
 3. Run the notebook top to bottom. It builds seeds → extracts traces (footprints frozen) → shows the
    overlay. Writes results to `data/results/debug_outputs/run_<timestamp>/`.
 
@@ -94,8 +96,8 @@ LOCAL  ──_proj_corr.tif──►  COLAB (GPU: CellPose)  ──_seg_labels_*
 ```
 That's the whole reason the pipeline is two notebooks. Everything else is automatic.
 
-*(Smoother options, if this gets used a lot: put all 3 paths in one config cell; or mount Google Drive
-in Colab so the files sync instead of manual upload/download. Ask if you want that set up.)*
+*(Smoother option, if this gets used a lot: mount Google Drive in Colab so the projection/mask sync
+automatically instead of the manual upload/download. Ask if you want that set up.)*
 
 ---
 
