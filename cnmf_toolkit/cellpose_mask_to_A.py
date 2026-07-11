@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-"""Phase-2 (test plan 3): convert a CellPose label mask -> CNMF-style _A.npz,
-so the official ground_truth_scorer.py can score the segmentation directly.
+"""Convert a CellPose label mask -> CNMF-style _A.npz, so ground_truth_scorer.py
+can score the segmentation directly (without running the full CNMF hybrid).
 
 The scorer reshapes each footprint column with order='F' against the annotation
 dims, so we Fortran-flatten each cell's binary mask into a column of a sparse
