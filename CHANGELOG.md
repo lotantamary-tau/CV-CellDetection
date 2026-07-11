@@ -6,9 +6,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com): each PR h
 
 ---
 
-## [2026-07-11] PR — CellPose→CNMF hybrid detection pipeline
+## [2026-07-11] PR #5 — CellPose→CNMF hybrid detection pipeline
 
-Merge commit: _pending_.
+Merge commit: [`30ff799`](https://github.com/lotantamary-tau/CV-CellDetection/commit/30ff799).
 
 ### Added
 
