@@ -6,6 +6,26 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com): each PR h
 
 ---
 
+## [2026-07-11] PR — CellPose→CNMF hybrid detection pipeline
+
+Merge commit: _pending_.
+
+### Added
+
+- **CellPose→CNMF hybrid pipeline** — replaces CNMF's brightness-based seeding (which merges touching cells) with **CellPose-SAM** deep-learning cell detection, then extracts each cell's activity trace via **seeded CNMF** with the footprints frozen. On the OPCal test recording it beats the greedy CNMF baseline: **186 covered / 14 missed / 17 merges** vs **158 / 42 / 25** (+28 cells, −28 missed, −8 merges), with a per-cell trace.
+- **`notebooks/cellpose_colab.ipynb`** — Colab (GPU) notebook that runs CellPose-SAM (`cpsam_v2`) on a movie projection → a cell mask. Step 1 (the heavy model needs a GPU).
+- **`notebooks/OPCal_cell detection_caiman_150226_dl-seeding.ipynb`** — the local hybrid notebook. Step 2: CellPose mask → seeded CNMF (intensity-weighted seeds, min-brightness junk filter, frozen footprints) → traces + scored overlay. A **CONFIG cell** at the top holds the 3 paths teammates edit; key steps are off/on toggles (`INTENSITY_WEIGHT`, `JUNK_FILTER`, `RUN_REFIT`, `RUN_COMPONENT_EVAL`).
+- **`cnmf_toolkit/cellpose_export_projection.py`** — build mean/max/correlation projections of a movie (the 2D image uploaded to Colab). Accepts an optional movie path argument.
+- **`cnmf_toolkit/cellpose_mask_to_A.py`** — convert a CellPose label mask → CNMF-style `_A.npz` so `ground_truth_scorer.py` can score a segmentation directly.
+- **`cnmf_toolkit/DL_SEEDING_WORKFLOW.md`** — step-by-step teammate guide (which 3 paths to edit, the Colab↔local upload/download, the toggles, troubleshooting).
+- No new dependencies for the local side (CellPose runs only on Colab; local uses the existing CaImAn/numpy/scipy/scikit-image stack).
+
+### Documentation
+
+- `CLAUDE.md`: directory-table entries for the hybrid pipeline + its files.
+
+---
+
 ## [2026-06-25] PR #4 — Ground-truth scorer tool
 
 Merge commit: [`3a1deee`](https://github.com/lotantamary-tau/CV-CellDetection/commit/3a1deee).
