@@ -6,6 +6,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com): each PR h
 
 ---
 
+## [2026-09-11] Unreleased — NaN-blanking fix in `norm01`
+
+### Fixed
+
+- **`cnmf_toolkit/cellpose_export_projection.py` — `norm01` blanked any projection containing a NaN.** The numerator used the NaN-aware `np.nanmin` while the denominator used `np.ptp`, which is not: a single NaN made every pixel NaN, and `nan_to_num` then mapped the whole image to `0.0`. CellPose reads that as an empty field of view and finds nothing, so the recording is discarded with a message blaming the microscope. The correlation projection reliably contains NaNs — `local_correlations` divides by each pixel's temporal standard deviation, and a motion-corrected movie has zero-variance pixels in the border it shifts in — so **the recordings that most needed motion correction were the ones silently lost**. One stuck camera pixel (constant over time) was also enough: 3 NaNs blanked a 64×64 image. Found by an independent review of the OPCal pipeline, which vendors this file; fixed in both repos.
+
+---
+
 ## [2026-07-11] PR #5 — CellPose→CNMF hybrid detection pipeline
 
 Merge commit: [`30ff799`](https://github.com/lotantamary-tau/CV-CellDetection/commit/30ff799).

@@ -29,8 +29,19 @@ os.makedirs(OUTDIR, exist_ok=True)
 
 
 def norm01(a):
+    """Scale to [0, 1], ignoring NaNs.
+
+    np.ptp is NOT NaN-aware while np.nanmin is, so the original mixed pair made
+    a single NaN turn the whole array into NaN and then -- via nan_to_num --
+    into zeros. The correlation projection reliably contains NaNs (CaImAn
+    divides by each pixel's temporal standard deviation, and a motion-corrected
+    movie has zero-variance pixels in the border it shifts in), so this blanked
+    exactly the recordings that needed motion correction most: CellPose saw a
+    black image and reported no cells.
+    """
     a = a.astype('float32')
-    return np.nan_to_num((a - np.nanmin(a)) / (np.ptp(a) + 1e-9), nan=0.0)
+    lo, hi = np.nanmin(a), np.nanmax(a)
+    return np.nan_to_num((a - lo) / ((hi - lo) + 1e-9), nan=0.0)
 
 
 print(f'[export] loading movie: {MOVIE}')
